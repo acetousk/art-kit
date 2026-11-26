@@ -30,6 +30,8 @@ def on_request(req, lib):
     h = Soup.MessageHeaders.new(Soup.MessageHeadersType.RESPONSE)
     h.append('Content-Security-Policy', CSP)
     h.append('Cache-Control', 'no-store')
+    # The UI (library://ui) fetches data from library://api: WebKit needs this header for that.
+    h.append('Access-Control-Allow-Origin', '*')
     resp.set_http_headers(h)
     req.finish_with_response(resp)
 
