@@ -50,7 +50,7 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -yq xvfb xdotool imagemagick libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 \
-            libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libegl1 libgl1 libgl1-mesa-dri libxi6 libxxf86vm1 libxtst6 libsm6
+            libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libegl1 libgl1 libopengl0 libgl1-mesa-dri libxi6 libxxf86vm1 libxtst6 libsm6
 
       - name: Install, open, screenshot (Linux, Mac)
         if: runner.os != 'Windows'
@@ -113,6 +113,7 @@ jobs:
           "$ART" --selftest > smoke/selftest.txt 2>&1 || fail="$fail selftest"
           cat smoke/selftest.txt
           grep -q False smoke/selftest.txt && fail="$fail selftest-apps"
+          [ "$RUNNER_OS" = Linux ] || cp ~/Library/Logs/DiagnosticReports/* /tmp/blender.crash.txt "$TMPDIR/blender.crash.txt" smoke/ 2>/dev/null || true
           [ -z "$fail" ] || { echo "::error::did not start:$fail"; exit 1; }
 
       - name: Install, open, screenshot (Windows)
@@ -139,6 +140,11 @@ jobs:
           foreach ($f in "$A\Art Kit.exe", "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Art Kit\Art Kit.lnk") {
             if (-not (Test-Path $f)) { throw "not installed: $f" }
           }
+          # The runner has no GPU, and Blender needs OpenGL 4.3: a software OpenGL (Mesa llvmpipe) next to blender.exe, for this test only
+          gh release download --repo pal1000/mesa-dist-win --pattern '*-release-msvc.7z' --dir mesa
+          7z x -omesa (Get-ChildItem mesa\*.7z).FullName | Out-Null
+          Copy-Item mesa\x64\opengl32.dll, mesa\x64\libgallium_wgl.dll "$A\Blender\"
+          $env:GALLIUM_DRIVER = 'llvmpipe'
           $env:ART_KIT_URL_FILE = "$PWD\smoke\url.txt"
           $ak = Start-Process "$A\Art Kit.exe" -PassThru -RedirectStandardOutput smoke\art-kit.log -RedirectStandardError smoke\art-kit.err
           if ((WaitWin '^Art Kit' 60) -and -not $ak.HasExited -and (Test-Path smoke\url.txt)) {

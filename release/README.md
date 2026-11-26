@@ -48,3 +48,4 @@ Downloads go to `release/cache/` (they resume). Run the app from the source: `py
 - Kit settings, only when no config exists: Krita defaults (`kritarc`), Blender preferences (no splash, Emulate 3 Button Mouse), Sweet Home 3D Java options.
 - Env for tests: `ART_KIT_APPS=<dir>` (the bundled apps), `ART_KIT_UPDATE_URL=<url>` (a fake release JSON), `ART_KIT_KIOSK=1` (no update check), `ART_KIT_NO_DOWNLOAD=1` (no books download), `ART_KIT_URL_FILE=<file>` (the app writes its URL with the token there).
 - Signing: none. Windows SmartScreen and macOS Gatekeeper show one warning. Krita, Blender, and Sweet Home 3D keep their own signatures.
+- Known on macOS: the first start asks "Allow Art Kit to find devices on local networks?", and `spctl` rejects `Art Kit.app`. The launcher is not signed: users right-click it and choose Open.

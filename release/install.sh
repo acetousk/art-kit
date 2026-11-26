@@ -36,6 +36,11 @@ entry art-kit-krita 'Krita (Art Kit)' "\"$DEST/Krita/AppRun\" %F" krita
 entry art-kit-blender 'Blender (Art Kit)' "\"$DEST/Blender/blender\" %F" "$DEST/Blender/blender.svg"
 entry art-kit-sweethome3d 'Sweet Home 3D (Art Kit)' \
   "env \"_JAVA_OPTIONS=-Xmx700m -XX:+UseSerialGC -Dsun.java2d.opengl=false\" \"$DEST/SweetHome3D/SweetHome3D\" %F" "$DEST/SweetHome3D/SweetHome3DIcon.png"
+miss=; for l in libOpenGL.so.0 libEGL.so.1 libGL.so.1; do PATH="$PATH:/sbin:/usr/sbin" ldconfig -p 2>/dev/null | grep -q "$l" || miss="$miss $l"; done
+[ -z "$miss" ] || { echo "Missing parts for Krita and Blender:$miss. Install them with:"  # minimal installs lack these
+  echo "  Fedora: sudo dnf install libglvnd-opengl libglvnd-egl libglvnd-glx"
+  echo "  Ubuntu: sudo apt install libopengl0 libegl1 libgl1"
+  echo "  Arch:   sudo pacman -S libglvnd"; }
 command -v update-desktop-database >/dev/null && update-desktop-database "$MENU" 2>/dev/null || true
 echo "Art Kit is installed. Open it from the app menu, or run: $ART"
 # The books and pictures (the same builder as the app uses). Ctrl+C is safe: Art Kit goes on at its next start.

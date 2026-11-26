@@ -35,7 +35,8 @@ The Art Kit launcher is not signed. Krita, Blender and Sweet Home 3D are signed 
 
 1. Download the `.tar.gz` file and extract it.
 2. In the extracted folder, run `./install.sh`. Do not use root. It installs to `~/.local/opt/art-kit` and adds menu entries.
-3. Open Art Kit from the app menu.
+3. If `install.sh` lists missing parts, install them with the command it shows.
+4. Open Art Kit from the app menu.
 
 **After install**
 
