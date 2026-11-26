@@ -15,9 +15,16 @@ When the device turns on, the kid is in Krita. A dock at the bottom switches bet
 |---|---|
 | **Parent** | [PARENTS.md](PARENTS.md): what your kid sees and learns, safety, where the art goes, and your 10 minutes a week. No tech needed. |
 | **Setup adult** | [docs/1-get-a-device.md](docs/1-get-a-device.md): which devices work, and how to test one before you pay |
-| **Setup adult** | [kiosk/install.sh](kiosk/install.sh) with [kit.conf](kit.conf): the install (guide `docs/2`–`docs/3` to come) |
+| **Setup adult** | [docs/2-install-fedora.md](docs/2-install-fedora.md): install Fedora on the device |
+| **Setup adult** | [docs/3-run-the-kit.md](docs/3-run-the-kit.md): edit [kit.conf](kit.conf), run [kiosk/install.sh](kiosk/install.sh), finish the manual steps |
+| **Kid + parent** | [docs/4-first-day.md](docs/4-first-day.md): the first hour with the kit |
 | **Setup adult + parent** | [docs/5-backup-and-share.md](docs/5-backup-and-share.md): backup, and using Tresorit to talk about the art |
+| **Setup adult** | [docs/6-remote-help.md](docs/6-remote-help.md): Tailscale and T3 Code for remote help |
+| **Setup adult** | [docs/7-maintenance.md](docs/7-maintenance.md): updates, reboots, upgrades, lessons |
+| **Setup adult + kid** | [docs/8-when-stuck.md](docs/8-when-stuck.md): problems, checks, and fixes |
 | **Lesson writers** | [lessons/RULES.md](lessons/RULES.md) and [lessons/COURSE.md](lessons/COURSE.md) |
+| **Parent, teacher, or older kid** | [write-lesson skill](.claude/skills/write-lesson/SKILL.md): write your own lesson with Claude |
+| **Family or teacher who forks** | [fork-kit skill](.claude/skills/fork-kit/SKILL.md): make the kit your own |
 | **Everyone** | [PLAN.md](PLAN.md): the full plan, the repo layout, and what is left to build |
 
 ## What is in this repo

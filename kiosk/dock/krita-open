@@ -1,0 +1,5 @@
+#!/bin/sh
+# Start Krita. If the dock left a file to open (Library: "Open in Krita"), open it.
+f="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/art-kit/krita-file"
+if [ -s "$f" ]; then p=$(cat "$f"); rm -f "$f"; exec /usr/bin/krita "$p"; fi
+exec /usr/bin/krita
