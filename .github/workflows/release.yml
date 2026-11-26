@@ -6,7 +6,6 @@ name: Release
 on:
   push:
     tags: ['v*']
-    branches: [release-desktop]  # testing only: remove before merge
   workflow_dispatch:
 
 permissions:
