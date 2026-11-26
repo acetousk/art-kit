@@ -32,6 +32,54 @@ label.status { color: #8e8e95; font-size: 16px; margin: 0 16px; }
 """
 
 
+def xdo(*args):
+    return subprocess.run(['xdotool'] + list(args), capture_output=True, text=True).stdout.split()
+
+
+def fit(win):
+    """Make an app window fill the screen above the dock (X11 apps ignore the dock's strut)."""
+    try:
+        sw, sh = map(int, xdo('getdisplaygeometry'))
+        g = dict(l.split('=', 1) for l in subprocess.run(['xdotool', 'getwindowgeometry', '--shell', win],
+                 capture_output=True, text=True).stdout.split())
+        x, y, w, h = (int(g[k]) for k in ('X', 'Y', 'WIDTH', 'HEIGHT'))
+    except (ValueError, KeyError):
+        return
+    if win not in bare:  # no title bar: no close or minimize buttons for the kid (Motif hints: decorations off)
+        bare.add(win)
+        subprocess.run(['xprop', '-id', win, '-f', '_MOTIF_WM_HINTS', '32c', '-set', '_MOTIF_WM_HINTS', '2, 0, 0, 0, 0'])
+        x = -1  # size it again: the frame changed
+    if (x, y, w, h) != (0, 0, sw, sh - HEIGHT):
+        xdo('windowstate', '--remove', 'FULLSCREEN', win)
+        xdo('windowstate', '--remove', 'MAXIMIZED_VERT', win)
+        xdo('windowstate', '--remove', 'MAXIMIZED_HORZ', win)
+        xdo('windowmove', win, '0', '0')
+        xdo('windowsize', win, str(sw), str(sh - HEIGHT))
+
+
+def main_window(wmclass):
+    """The biggest visible window of the app (not a dialog or a helper window)."""
+    best, area = None, 0
+    for win in xdo('search', '--onlyvisible', '--class', wmclass):
+        try:
+            g = dict(l.split('=', 1) for l in subprocess.run(['xdotool', 'getwindowgeometry', '--shell', win],
+                     capture_output=True, text=True).stdout.split())
+            a = int(g['WIDTH']) * int(g['HEIGHT'])
+        except (ValueError, KeyError):
+            continue
+        if a > area:
+            best, area = win, a
+    return best
+
+
+def raise_app(wmclass):
+    win = main_window(wmclass)
+    if win:
+        fit(win)
+        xdo('windowactivate', win)
+    return win
+
+
 def show(button, app):
     label, unit, wmclass, cmd = app
     if subprocess.run(['systemctl', '--user', '-q', 'is-active', unit]).returncode != 0:
@@ -39,9 +87,14 @@ def show(button, app):
             subprocess.Popen(['systemd-run', '--user', '--quiet', '--collect', '--unit=' + unit] + cmd)
         else:
             subprocess.Popen(['systemctl', '--user', 'start', unit])
-    # Raise the window. --sync waits until a new window shows (2 min at most).
-    subprocess.Popen(['timeout', '120', 'xdotool', 'search', '--sync', '--onlyvisible', '--class', wmclass,
-                      'windowactivate'], stderr=subprocess.DEVNULL)
+    if not raise_app(wmclass):
+        # Not open yet: try again every 2 s for 2 min, until its window shows.
+        GLib.timeout_add_seconds(2, lambda: not raise_app(wmclass) and GLib.get_monotonic_time() < deadline[0])
+        deadline[0] = GLib.get_monotonic_time() + 120_000_000
+
+
+deadline = [0]
+bare = set()  # windows whose title bar is already off
 
 
 def front_class():
@@ -53,7 +106,10 @@ def mark(buttons):
     """Show which apps run and which one is in front."""
     import re
     front = front_class()
+    active = (xdo('getactivewindow') or [None])[0]
     for b, (label, unit, wmclass, cmd) in buttons:
+        if active and re.search(wmclass, front) and main_window(wmclass) == active:
+            fit(active)  # main windows that resize themselves go back above the dock; dialogs stay as they are
         on = subprocess.run(['systemctl', '--user', '-q', 'is-active', unit]).returncode == 0
         (b.add_css_class if on else b.remove_css_class)('running')
         (b.add_css_class if on and re.search(wmclass, front) else b.remove_css_class)('front')

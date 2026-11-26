@@ -153,7 +153,7 @@ systemctl enable dnf5-automatic.timer
 su - "$ADMIN" -c 'curl -fsSL https://t3.codes/install.sh | sh'
 
 # 12. Library (read-only for the kid) and the Library app. build-library.sh lists the sources and makes the search index.
-dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown poppler-utils urw-base35-fonts unzip wget xdotool
+dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown poppler-utils urw-base35-fonts unzip wget xdotool xprop
 bash "$(dirname "$0")/../library/build-library.sh" || echo "WARNING: build-library.sh failed. Run it again (it resumes)."
 rm -rf /opt/art-kit/app && mkdir -p /opt/art-kit && cp -r "$(dirname "$0")/../app" /opt/art-kit/app
 
