@@ -96,7 +96,9 @@ jobs:
             shot art-kit
             for i in 0 1 2; do  # the app row: /api/app, the same code and paths as the buttons
               curl -fsS -G "$base/api/app" --data-urlencode "t=$tok" --data-urlencode "name=${names[i]}" >> smoke/apps.log
-              if wait_win "${names[i]}" 120; then sleep 5; shot "${names[i]}"; else shot "${names[i]}-failed"
+              if wait_win "${names[i]}" 120; then sleep 5
+                [ "$RUNNER_OS" = Linux ] || { osascript -e "tell application \"${names[i]}\" to activate" || true; sleep 2; }  # in front of Art Kit
+                shot "${names[i]}"; else shot "${names[i]}-failed"
                 # Intel Mac VMs have no full Metal GPU: Blender 4.5 crashes in GPU_context_create (NULL storage buffer). Not an Art Kit bug.
                 if [ '${{ matrix.name }}' = mac-x64 ] && [ $i = 1 ]; then echo "::warning::Blender crashed in GPU_context_create: the Intel Mac VM has no full Metal GPU (see blender.crash.txt)"
                 else fail="$fail ${names[i]}"; fi
@@ -160,7 +162,7 @@ jobs:
             Shot art-kit
             foreach ($n in 'Krita', 'Blender', 'Sweet Home 3D') {  # the app row: /api/app, the same code and paths as the buttons
               Invoke-RestMethod "$base/api/app?t=$tok&name=$([uri]::EscapeDataString($n))" | ConvertTo-Json | Add-Content smoke\apps.log
-              if (WaitWin $n 120) { Start-Sleep 5; Shot $n } else { $fail += $n; Shot "$n-failed" }
+              if (WaitWin $n 120) { Start-Sleep 5; if ($n -eq 'Blender') { Start-Sleep 25 }; Shot $n }  # software OpenGL draws slowly else { $fail += $n; Shot "$n-failed" }
               Get-Process | Where-Object { $_.Path -like "$A\*" -and $_.Id -ne $ak.Id } | Stop-Process -Force
             }
           } else { $fail += 'Art-Kit'; Shot art-kit-failed }
