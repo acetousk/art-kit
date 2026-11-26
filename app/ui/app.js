@@ -68,7 +68,7 @@ function home() {
   d.querySelector('.bigrow').append(
     button('<span class="row"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="ledge"><b class="brasslabel">Tutorials</b></span>', () => go(topics), 'shelfcase'),
     button('<span class="mat"><img alt=""></span><b class="brasslabel">Inspire</b>', () => go(inspire), 'gilt'));
-  d.querySelector('.smallrow').append(button('From Family', () => go(family), 'leather'), button('Note', () => go(note), 'leather note'));
+  d.querySelector('.smallrow').append(button('From Family', () => go(family), 'leather'), button('Notes', () => go(note), 'leather note'));
   main.append(d);
   api('collections').then(c => { if (c[0] && c[0].cover) d.querySelector('.gilt img').src = c[0].cover; });
 }
@@ -188,16 +188,27 @@ async function family() {
   main.prepend(g);
 }
 
-function note() {
-  setTitle('Note');
-  const d = el(`<div class="note list"><textarea placeholder="Write here"></textarea></div>`).firstChild;
+async function note() {
+  setTitle('Notes');
+  const d = el(`<div class="note list"><textarea placeholder="Write a new note here"></textarea></div>`).firstChild;
   const t = d.querySelector('textarea');
+  const old = document.createElement('div');
+  old.className = 'old-notes';
+  async function showOld() {
+    old.innerHTML = '';
+    const ns = await api('notes');
+    if (!ns.length) old.append(el('<p class="other">No notes yet.</p>').firstChild);
+    for (const n of ns)
+      old.append(el(`<div class="family-text old-note"><b>${esc(n.when)}</b><br>${esc(n.text)}</div>`).firstChild);
+  }
   d.append(button('Save note', async () => {
     if (!t.value.trim()) return;
     const r = await api('note', {text: t.value});
-    if (r.ok) { toast('Saved'); t.value = ''; }
+    if (r.ok) { toast('Saved'); t.value = ''; showOld(); }
   }, 'primary'));
+  d.append(el('<h2 class="group">Your notes</h2>').firstChild, old);
   main.append(d);
+  await showOld();
   t.focus();
 }
 

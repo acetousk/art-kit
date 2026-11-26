@@ -198,6 +198,19 @@ class Library:
             f.write(text.rstrip() + '\n')
         return {'ok': True, 'file': os.path.basename(p)}
 
+    def notes(self):
+        """Her notes, newest first."""
+        d = os.path.join(self.art, 'Notes')
+        out = []
+        for f in sorted(os.listdir(d), reverse=True) if os.path.isdir(d) else []:
+            if f.endswith('.txt'):
+                try:
+                    when = datetime.datetime.strptime(f[:15], '%Y-%m-%d-%H%M').strftime('%a %d %b %Y, %H:%M')
+                except ValueError:
+                    when = f[:-4]
+                out.append({'when': when, 'text': open(os.path.join(d, f), errors='replace').read()})
+        return out
+
     # ---------- search ----------
     def search(self, q):
         words = re.findall(r'\w+', q)
@@ -250,6 +263,7 @@ class Library:
                      'krita': lambda: self.krita(q['rel']),
                      'family': lambda: self.family(),
                      'note': lambda: self.note(q['text']),
+                     'notes': lambda: self.notes(),
                      'search': lambda: self.search(q.get('q', ''))}[path]
                 return 200, 'application/json', json.dumps(f()).encode()
             else:

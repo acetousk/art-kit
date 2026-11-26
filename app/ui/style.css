@@ -156,7 +156,7 @@ body[data-room=gallery] .group { color: #fbefd0; }
 
 /* Note: lined paper */
 .note { margin-top: 8px; }
-.note textarea { width: 100%; height: 50vh; padding: 8px 28px; font-size: 26px; line-height: 44px; border: 0;
+.note textarea { width: 100%; height: 182px; padding: 8px 28px; font-size: 26px; line-height: 44px; border: 0;
   background: linear-gradient(to right, transparent 18px, rgba(214, 102, 102, .6) 18px 20px, transparent 20px),
     repeating-linear-gradient(transparent 0 43px, #cfdbe6 43px 44px), var(--page); background-attachment: local; box-shadow: 0 4px 10px rgba(0, 0, 0, .4); }
 .note button { align-self: center; padding: 6px 44px; }
@@ -190,3 +190,4 @@ body[data-room=gallery] .group { color: #fbefd0; }
   html, body { font-size: 20px; }
   .home { gap: 20px; }
 }
+.old-note { margin: 0 auto 14px; }
