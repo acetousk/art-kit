@@ -32,7 +32,8 @@ mkdir -p /var/lib/AccountsService/users
 printf '[User]\nSession=krita-kiosk\nSystemAccount=false\n' > /var/lib/AccountsService/users/$KID
 
 # 4. Session = GNOME Kiosk + Krita, the dock, and the Library app. Root-owned files; the kid cannot edit them.
-#    If an app quits, systemd starts it again.
+#    Only one app runs at a time (less memory): the dock closes the open app before it starts the next one.
+#    If an app crashes, systemd starts it again. If the kid quits it, the dock opens Krita.
 cat > /usr/share/wayland-sessions/krita-kiosk.desktop <<'EOF'
 [Desktop Entry]
 Name=Krita Kiosk
@@ -47,9 +48,7 @@ mkdir -p /etc/systemd/user/gnome-session@krita-kiosk.target.d
 cat > /etc/systemd/user/gnome-session@krita-kiosk.target.d/session.conf <<'EOF'
 [Unit]
 Requires=org.gnome.Kiosk.target
-Requires=krita-kiosk.service
 Wants=art-dock.service
-Wants=art-library.service
 Wants=org.gnome.SettingsDaemon.A11ySettings.target
 Wants=org.gnome.SettingsDaemon.MediaKeys.target
 Wants=org.gnome.SettingsDaemon.Power.target
@@ -62,8 +61,8 @@ After=gnome-session.target
 
 [Service]
 Environment=QT_QPA_PLATFORM=xcb
-ExecStart=/usr/bin/krita --fullscreen
-Restart=always
+ExecStart=/usr/bin/krita
+Restart=on-failure
 RestartSec=1
 EOF
 # Library app and dock (steps 12 and 14). All apps run on X11 (Xwayland): the dock raises them with xdotool.
@@ -76,7 +75,7 @@ After=gnome-session.target
 [Service]
 Environment=GDK_BACKEND=x11
 ExecStart=/usr/bin/python3 /opt/art-kit/app/library-app.py
-Restart=always
+Restart=on-failure
 RestartSec=1
 EOF
 cat > /etc/systemd/user/art-dock.service <<'EOF'
@@ -153,7 +152,7 @@ systemctl enable dnf5-automatic.timer
 su - "$ADMIN" -c 'curl -fsSL https://t3.codes/install.sh | sh'
 
 # 12. Library (read-only for the kid) and the Library app. build-library.sh lists the sources and makes the search index.
-dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown poppler-utils urw-base35-fonts unzip wget xdotool xprop
+dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown poppler-utils urw-base35-fonts unzip wget xdotool xprop wmctrl
 bash "$(dirname "$0")/../library/build-library.sh" || echo "WARNING: build-library.sh failed. Run it again (it resumes)."
 rm -rf /opt/art-kit/app && mkdir -p /opt/art-kit && cp -r "$(dirname "$0")/../app" /opt/art-kit/app
 

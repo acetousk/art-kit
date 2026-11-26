@@ -45,8 +45,8 @@ def fit(win):
         x, y, w, h = (int(g[k]) for k in ('X', 'Y', 'WIDTH', 'HEIGHT'))
     except (ValueError, KeyError):
         return
-    if win not in bare:  # no title bar: no close or minimize buttons for the kid (Motif hints: decorations off)
-        bare.add(win)
+    hints = subprocess.run(['xprop', '-id', win, '_MOTIF_WM_HINTS'], capture_output=True, text=True).stdout
+    if '0x2, 0x0, 0x0' not in hints:  # no title bar: no close or minimize buttons (apps can turn it back on)
         subprocess.run(['xprop', '-id', win, '-f', '_MOTIF_WM_HINTS', '32c', '-set', '_MOTIF_WM_HINTS', '2, 0, 0, 0, 0'])
         x = -1  # size it again: the frame changed
     if (x, y, w, h) != (0, 0, sw, sh - HEIGHT):
@@ -60,7 +60,12 @@ def fit(win):
 def main_window(wmclass):
     """The biggest visible window of the app (not a dialog or a helper window)."""
     best, area = None, 0
+    # Only top-level windows that the window manager manages (Java apps also have big inner windows).
+    managed = {str(int(l.split()[0], 16)) for l in subprocess.run(['wmctrl', '-l'], capture_output=True,
+               text=True).stdout.splitlines() if l.strip()}
     for win in xdo('search', '--onlyvisible', '--class', wmclass):
+        if win not in managed:
+            continue
         try:
             g = dict(l.split('=', 1) for l in subprocess.run(['xdotool', 'getwindowgeometry', '--shell', win],
                      capture_output=True, text=True).stdout.split())
@@ -80,21 +85,66 @@ def raise_app(wmclass):
     return win
 
 
-def show(button, app):
+def running(unit):
+    return subprocess.run(['systemctl', '--user', '-q', 'is-active', unit]).returncode == 0
+
+
+def start(app):
     label, unit, wmclass, cmd = app
-    if subprocess.run(['systemctl', '--user', '-q', 'is-active', unit]).returncode != 0:
-        if cmd:  # a transient unit, so 70-daily.sh can count the time
-            subprocess.Popen(['systemd-run', '--user', '--quiet', '--collect', '--unit=' + unit] + cmd)
-        else:
-            subprocess.Popen(['systemctl', '--user', 'start', unit])
-    if not raise_app(wmclass):
-        # Not open yet: try again every 2 s for 2 min, until its window shows.
-        GLib.timeout_add_seconds(2, lambda: not raise_app(wmclass) and GLib.get_monotonic_time() < deadline[0])
-        deadline[0] = GLib.get_monotonic_time() + 120_000_000
+    if cmd:  # a transient unit, so 70-daily.sh can count the time
+        subprocess.Popen(['systemd-run', '--user', '--quiet', '--collect', '--unit=' + unit] + cmd)
+    else:
+        subprocess.Popen(['systemctl', '--user', 'start', unit])
+    # Raise it when its window shows: try every 2 s for 2 min.
+    last_start[0] = GLib.get_monotonic_time()
+    deadline[0] = GLib.get_monotonic_time() + 120_000_000
+    GLib.timeout_add_seconds(2, lambda: not raise_app(wmclass) and GLib.get_monotonic_time() < deadline[0])
 
 
+def close(app):
+    """Ask the app to close, like the window's close button: it shows its own "Save changes?" dialog."""
+    win = main_window(app[2])
+    if win:
+        subprocess.run(['wmctrl', '-ic', hex(int(win))])
+    else:
+        subprocess.run(['systemctl', '--user', 'stop', app[1]])
+
+
+def show(button, app):
+    """One app at a time (less memory): close the open app, then start the one she tapped.
+    The open app may ask "Save changes?". If she cancels, it stays open; a new tap asks again."""
+    if running(app[1]):
+        switching[0] = None
+        raise_app(app[2])
+        return
+    for a in APPS:
+        if a is not app and running(a[1]):
+            close(a)
+    waiting = switching[0] is not None
+    switching[0] = app
+    give_up[0] = GLib.get_monotonic_time() + 300_000_000  # time to answer "Save changes?"
+    if waiting:
+        return  # the step below is already waiting; it now starts this app
+
+    def step():
+        target = switching[0]
+        if target is None:
+            return False
+        if any(running(a[1]) for a in APPS if a is not target):
+            if GLib.get_monotonic_time() < give_up[0]:
+                return True
+            switching[0] = None
+            return False
+        switching[0] = None
+        start(target)
+        return False
+    GLib.timeout_add(500, step)
+
+
+give_up = [0]
+switching = [None]  # the app the dock is switching to
+last_start = [0]
 deadline = [0]
-bare = set()  # windows whose title bar is already off
 
 
 def front_class():
@@ -105,6 +155,9 @@ def front_class():
 def mark(buttons):
     """Show which apps run and which one is in front."""
     import re
+    if (not switching[0] and GLib.get_monotonic_time() - last_start[0] > 10_000_000
+            and not any(running(a[1]) for a in APPS)):
+        show(None, APPS[0])  # she quit the last app: open Krita again
     front = front_class()
     active = (xdo('getactivewindow') or [None])[0]
     for b, (label, unit, wmclass, cmd) in buttons:

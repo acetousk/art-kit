@@ -22,7 +22,7 @@ done
 check 'Blender on X11 (dock can raise it)' sh -c "flatpak override --show org.blender.Blender | grep -q '!wayland'"
 check 'Dock window rules' grep -q '^match-class=org.artkit.Dock$' /usr/local/share/gnome-kiosk/window-config.ini
 check 'Dock running' systemctl --user -M "$KID@" -q is-active art-dock.service
-check 'Library app running' systemctl --user -M "$KID@" -q is-active art-library.service
+check 'One app running' sh -c "[ \$(systemctl --user -M '$KID@' list-units --state=active --no-legend krita-kiosk.service art-library.service art-sweethome3d.service art-blender.service | wc -l) -eq 1 ]"
 check 'Library read-only for the kid' sh -c "! runuser -u '$KID' -- touch '/home/$KID/Library/.write-test' 2>/dev/null"
 check 'Library readable for the kid' runuser -u "$KID" -- test -r "/home/$KID/Library/CREDITS.md"
 exit "$failed"
