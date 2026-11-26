@@ -1,6 +1,6 @@
 # Your Kid Has an Art Computer
 
-A guide for parents. You do not need to know anything about computers.
+A guide for parents.
 
 ## In one minute
 - **What:** a tablet or laptop that does only art. When it turns on, your kid is in a drawing app.
@@ -23,7 +23,6 @@ A guide for parents. You do not need to know anything about computers.
 ```
 - The bar at the bottom is the **dock**. Tap a name to switch apps.
 - There is no desktop, no files window, and no settings. Your kid cannot install or remove anything.
-- If an app is closed, it opens again by itself.
 
 ## The Library
 The Library has two buttons and one search box.
@@ -100,8 +99,6 @@ Open the Art folder with your kid (on the device or on your phone). Ask one or t
 - "Show me one new word you learned."
 - "What do you want to make next?"
 
-You do not need to judge the art. Listen for whether they can explain what they did and why.
-
 ## When to step in
 | You see | Do this |
 |---|---|
@@ -124,13 +121,8 @@ You do not need to judge the art. Listen for whether they can explain what they 
 | Word | Meaning |
 |---|---|
 | **Kiosk** | A computer locked to a few apps, like a museum screen |
-| **Dock** | The bar at the bottom with the app buttons |
-| **Fedora** | The free system that runs the device (instead of Windows) |
 | **Krita** | A free drawing and painting app used by professional artists |
 | **Sweet Home 3D** | A free app to draw rooms and homes and see them in 3D |
 | **Blender** | A free 3D app used for films; here, only its 3D drawing tool (Grease Pencil) |
 | **Library** | The app with the lessons, the books, and the museum art |
-| **Public domain** | Old enough that anyone may use it for free |
-| **CC BY / CC0** | Licenses that let anyone use a work for free, with or without credit |
 | **Tresorit** | An encrypted backup service |
-| **Tailscale** | A safe private link that lets the setup adult fix the device from far away |
