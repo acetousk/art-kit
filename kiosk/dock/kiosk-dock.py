@@ -19,12 +19,16 @@ APPS = [
     ('Blender', 'art-blender.service', '^blender$', ['flatpak', 'run', 'org.blender.Blender']),
     ('Library', 'art-library.service', '^library-app', None),
 ]
+# Flat, quiet bar. Running apps get a short warm line under the name; the app in front gets a light pill.
 CSS = b"""
-window, .dock { background: linear-gradient(#6b4423, #4a2c14); }
-button { min-height: 52px; min-width: 150px; margin: 6px; padding: 0 12px; font-size: 20px; font-weight: bold;
-         color: #f3d27a; background: #3a2210; border: 2px solid #b8860b; border-radius: 10px; }
-button:active { background: #b8860b; color: #3a2210; }
-label.status { color: #f3d27a; font-size: 18px; margin: 0 14px; }
+window, .dock { background: #1e1e20; border-top: 1px solid #2c2c30; }
+button { min-height: 56px; min-width: 150px; margin: 12px 4px; padding: 0 16px; font-size: 19px; font-weight: 600;
+         color: #a8a8ae; background: none; border: none; border-radius: 12px; box-shadow: none; }
+button:active { background: #3a3a40; }
+button.running { color: #e8e8ec; background-image: linear-gradient(#d9a441, #d9a441);
+                 background-size: 28px 4px; background-position: 50% 88%; background-repeat: no-repeat; }
+button.front { color: #ffffff; background-color: #34343a; }
+label.status { color: #8e8e95; font-size: 16px; margin: 0 16px; }
 """
 
 
@@ -38,6 +42,22 @@ def show(button, app):
     # Raise the window. --sync waits until a new window shows (2 min at most).
     subprocess.Popen(['timeout', '120', 'xdotool', 'search', '--sync', '--onlyvisible', '--class', wmclass,
                       'windowactivate'], stderr=subprocess.DEVNULL)
+
+
+def front_class():
+    r = subprocess.run(['xdotool', 'getactivewindow', 'getwindowclassname'], capture_output=True, text=True)
+    return r.stdout.strip().lower()
+
+
+def mark(buttons):
+    """Show which apps run and which one is in front."""
+    import re
+    front = front_class()
+    for b, (label, unit, wmclass, cmd) in buttons:
+        on = subprocess.run(['systemctl', '--user', '-q', 'is-active', unit]).returncode == 0
+        (b.add_css_class if on else b.remove_css_class)('running')
+        (b.add_css_class if on and re.search(wmclass, front) else b.remove_css_class)('front')
+    return True
 
 
 def ago(t):
@@ -74,10 +94,13 @@ def on_activate(app):
                                               Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
     box = Gtk.Box(spacing=0)
     box.add_css_class('dock')
+    buttons = []
     for a in APPS:
         b = Gtk.Button(label=a[0])
         b.connect('clicked', show, a)
+        b.connect('clicked', lambda *x: GLib.timeout_add(800, lambda: mark(buttons) and False))
         box.append(b)
+        buttons.append((b, a))
     box.append(Gtk.Box(hexpand=True))
     battery = Gtk.Label(css_classes=['status'])
     backup = Gtk.Label(css_classes=['status'])
@@ -97,6 +120,7 @@ def on_activate(app):
         return True
     update()
     GLib.timeout_add_seconds(60, update)
+    GLib.timeout_add_seconds(2, mark, buttons)  # apps can also close or come to front on their own
 
     win = Gtk.ApplicationWindow(application=app, title='Dock', decorated=False, resizable=False)
     mon = win.get_display().get_monitors().get_item(0)
