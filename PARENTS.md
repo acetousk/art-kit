@@ -70,16 +70,16 @@ Many of the best art teachers wrote 100 years ago. Their books are now free for 
 ## Where the art goes
 - Everything your kid saves goes into one folder: **Art**.
 - **Backup (optional, Tresorit):** everything on the device (art, settings, brushes) copies itself to an encrypted online account every few minutes. If the device breaks, a new one gets it all back.
-- **You see everything in Art** on your phone in the Tresorit app. Your kid knows this. There is no separate "send to Mom" step.
+- **You see everything** on the device (all files, all apps' work) on your phone in the Tresorit app. Your kid knows this. There is no separate "send to Mom" step.
 - **Your kid gets their files** on a phone or school laptop with the same Tresorit app, with no adult needed.
 - If a file is deleted by mistake, you can get it back from the Tresorit history.
 
 ## Talking about the art (through Tresorit)
 Two shared folders connect you and your kid:
-- **Art** (kid → you): everything they save. File names show the topic and the lesson number, so you see where they are in the course. A daily page (`Art/Daily/`) lists the lessons done and the files made. Each file keeps its **version history**, so you can see how a piece grew.
+- **Backup** (kid → you): everything on the device. File names show the topic and the lesson number, so you see where they are in the course. A daily page (`Art/Daily/`, inside Backup) lists the lessons done and the files made. Each file keeps its **version history**, so you can see how a piece grew.
 - **From Family** (you → kid): put a photo or a note in this folder on your phone. It shows up in their Library. Use it for a drawing prompt ("draw our dog"), a "client" brief ("a poster for Grandma's birthday", "redo the guest room"), or a photo of your feedback.
 - Your kid can answer with a note in `Art/Notes/`.
-- Your kid knows you can see the Art folder. There is no live screen view.
+- Your kid knows you can see everything on the device. There is no live screen view.
 
 Details and more ideas: `docs/5-backup-and-share.md`.
 
@@ -89,10 +89,10 @@ Details and more ideas: `docs/5-backup-and-share.md`.
 | **Your kid** | Picks lessons, draws, designs, saves. Decides what to make. |
 | **You (parent)** | Look at the art. Ask questions. Tell the setup adult if something is wrong. |
 | **The setup adult** | Installs it once (about half a day). Adds lessons and images. Fixes problems. Can help from far away (optional). Steps: `docs/1` to `docs/3`. |
-| **The computer** | Updates itself at night. Restarts the app if it closes. Backs up the Art folder. |
+| **The computer** | Updates itself at night. Restarts the app if it closes. Backs up everything. |
 
 ## Your 10 minutes a week
-Open the Art folder with your kid (on the device or on your phone). Ask one or two:
+Open Backup with your kid (on the device or on your phone). Ask one or two:
 - "What did you make this week?"
 - "What lesson was that? What was the new idea?"
 - "What would you change if you did it again?"

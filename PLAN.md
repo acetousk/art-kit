@@ -24,7 +24,7 @@ art-kit/
 │   ├── 2-install-fedora.md    USB stick, install, first boot
 │   ├── 3-run-the-kit.md       Edit kit.conf, run install.sh, the manual steps
 │   ├── 4-first-day.md         Kid's first hour: dock, pen, first lesson, saving
-│   ├── 5-backup-and-share.md  ~/Art backup; parent and kid get files (Tresorit or USB-free options)
+│   ├── 5-backup-and-share.md  Whole-device backup; parents see everything (Tresorit)
 │   ├── 6-remote-help.md       Tailscale + T3 Code for the setup adult (optional)
 │   ├── 7-maintenance.md       Updates, health checks, rollback, adding lessons
 │   └── 8-when-stuck.md        Problems and fixes
@@ -34,7 +34,7 @@ art-kit/
 │   ├── 30-lockdown.sh         No network for the kid, USB storage off, Krita Python off
 │   ├── 40-apps.sh             Krita, Sweet Home 3D, Blender (Flatpak, no network)
 │   ├── 50-admin.sh            Admin user, auto updates (no auto reboot), Tailscale, T3 Code
-│   ├── 60-backup.sh           Tresorit sync of ~/Art (optional)
+│   ├── 60-backup.sh           Tresorit sync of the whole home + /etc (optional)
 │   ├── dock/                  The dock bar app (Python + GTK)
 │   └── tests.sh               Checks: autologin, no network, USB block, dock, apps
 ├── library/

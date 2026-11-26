@@ -2,7 +2,7 @@
 
 ## Audience and device
 - A kid, age 13. Smart, likes art. Reads at grade 7–8.
-- Surface tablet + pen + Type Cover. Apps: **Krita 5.2** and **Sweet Home 3D 7**. No internet. No paper, paint, or ink.
+- Surface tablet + pen + Type Cover. Apps: **Krita 6.0** (Fedora 44+) and **Sweet Home 3D 7**. No internet. No paper, paint, or ink.
 - Her files: `~/Art` (read/write). Books and files: `~/Library` (read-only).
 
 ## Sources (all in /tmp/books/)

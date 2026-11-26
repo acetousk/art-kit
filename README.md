@@ -38,4 +38,4 @@ art-kit/
 1. The kid's account has no network. Only the setup adult's account can go online (for updates and backup).
 2. Only open content. Every source and license is listed.
 3. No personal data in the repo. Names live only in `kit.conf` on the device.
-4. The kid knows what the family can see: everything in the Art folder.
+4. The family can see everything on the device (the whole backup), and the kid knows it.
