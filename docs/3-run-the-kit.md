@@ -63,7 +63,7 @@ Do these steps in order. Do not skip one.
 | **a** | Set the root password. Use a long password. Only you know it. | `sudo passwd root` | `all authentication tokens updated successfully` |
 | **b** | Set the GRUB password. It blocks boot-menu edits. A normal boot needs no password. | `sudo grub2-setpassword` | A prompt for the password, twice |
 | **c** | **Surface only.** Restart. At the blue MokManager screen: **Enroll MOK**, **Continue**, **Yes**, type `surface`, then restart. Then turn on Secure Boot in UEFI (hold **Volume Up** and press **Power**). Other devices: restart only. | `sudo reboot` | The kiosk starts after restart |
-| **d** | Do nothing. Leave UEFI without a password. | — | — |
+| **d** | Restart into UEFI (Surface: hold **Volume Up** and press **Power**). Set a UEFI password. Turn off boot from USB. Keep the password with the root password. A USB system has no kiosk and no firewall. Disk encryption is off (`docs/2`): if the device can be stolen, think about it, but then each start needs a password. | `sudo reboot` | UEFI asks for the password |
 | **e** | Connect Tailscale. Open the link. Sign in. Then in the Tailscale admin console, turn off key expiry for this device. | `sudo tailscale up --ssh` | A sign-in link |
 | **f** | Start T3 Code for `$ADMIN`. Open the link. On your computer, add the device in T3 Code: **Settings**, **Environments**, **Add environment**, **SSH**, `$ADMIN@$HOST`. | `sudo -iu $ADMIN t3 up` | A sign-in link |
 | **g** | Connect Wi-Fi. Use this only if Wi-Fi is down. Replace `<SSID>` and `<password>`. Keep the quotes. | `sudo nmcli device wifi connect "<SSID>" password "<password>"` | `successfully activated` |

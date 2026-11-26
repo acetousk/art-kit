@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build the search index ~/Library/index.sqlite (SQLite FTS5).
-Run as admin after each library update:  sudo python3 make-index.py --root /home/KID
+Run as admin after each library update:  sudo python3 make-index.py --root /var/lib/art-kit
 Indexes lesson READMEs, book page text (Books/<Book>/page-NNN.txt), and image credits.
 """
 import argparse, glob, os, re, sqlite3

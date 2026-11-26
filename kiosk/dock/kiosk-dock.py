@@ -32,6 +32,7 @@ button.front { color: #ffffff; background-color: #34343a; }
 button.opening { color: #ffffff; animation: pulse 0.7s ease-in-out infinite alternate; }
 label.status { color: #8e8e95; font-size: 16px; margin: 0 16px; }
 """
+NARROW = b"button { min-width: 0; padding: 0 10px; margin: 12px 2px; } label.status { font-size: 14px; margin: 0 6px; }"
 
 
 def xdo(*args):
@@ -59,9 +60,9 @@ def fit(win):
         xdo('windowsize', win, str(sw), str(sh - HEIGHT))
 
 
-def main_window(wmclass):
-    """The biggest visible window of the app (not a dialog or a helper window)."""
-    best, area = None, 0
+def windows(wmclass):
+    """The visible windows of the app, biggest first."""
+    out = []
     # Only top-level windows that the window manager manages (Java apps also have big inner windows).
     managed = {str(int(l.split()[0], 16)) for l in subprocess.run(['wmctrl', '-l'], capture_output=True,
                text=True).stdout.splitlines() if l.strip()}
@@ -74,9 +75,13 @@ def main_window(wmclass):
             a = int(g['WIDTH']) * int(g['HEIGHT'])
         except (ValueError, KeyError):
             continue
-        if a > area:
-            best, area = win, a
-    return best
+        out.append((a, win))
+    return [w for a, w in sorted(out, reverse=True)]
+
+
+def main_window(wmclass):
+    """The biggest visible window of the app (not a dialog or a helper window)."""
+    return (windows(wmclass) or [None])[0]
 
 
 def raise_app(wmclass):
@@ -87,8 +92,13 @@ def raise_app(wmclass):
     return win
 
 
+def state(unit):
+    return subprocess.run(['systemctl', '--user', 'is-active', unit], capture_output=True, text=True).stdout.strip()
+
+
 def running(unit):
-    return subprocess.run(['systemctl', '--user', '-q', 'is-active', unit]).returncode == 0
+    """Also while it starts or quits: never two heavy apps at the same time."""
+    return state(unit) not in ('inactive', 'failed', '')
 
 
 def start(app):
@@ -98,6 +108,7 @@ def start(app):
     else:
         subprocess.Popen(['systemctl', '--user', 'start', unit])
     # Raise it when its window shows: try every 0.5 s for 2 min. Then its button stops saying "Opening…".
+    opening[0] = app
     last_start[0] = GLib.get_monotonic_time()
     deadline[0] = GLib.get_monotonic_time() + 120_000_000
 
@@ -110,25 +121,28 @@ def start(app):
 
 
 def close(app):
-    """Ask the app to close, like the window's close button: it shows its own "Save changes?" dialog."""
-    win = main_window(app[2])
-    if win:
+    """Ask the app to close, like the window's close button: it shows its own "Save changes?" dialog.
+    All its main windows (Krita can have two), not dialogs: a dialog belongs to a window (WM_TRANSIENT_FOR)."""
+    wins = [w for w in windows(app[2]) if 'window id' not in
+            subprocess.run(['xprop', '-id', w, 'WM_TRANSIENT_FOR'], capture_output=True, text=True).stdout]
+    for win in wins:
         subprocess.run(['wmctrl', '-ic', hex(int(win))])
-    else:
+    if not wins:
         subprocess.run(['systemctl', '--user', 'stop', app[1]])
 
 
 def show(button, app):
     """One app at a time (less memory): close the open app, then start the one she tapped.
-    The open app may ask "Save changes?". If she cancels, it stays open; a new tap asks again."""
+    The open app may ask "Save changes?". If she cancels, it stays open; a new tap asks again.
+    The button says "Opening…" only when the app starts, so a cancel leaves no stale label."""
+    if busy():
+        return  # one start at a time: systemd may not know the new unit yet, so wait until its window shows
+    if app is not APPS[0]:
+        drop(KRITA_FILE)  # a picture for Krita: only for a switch to Krita
     if running(app[1]):
-        switching[0] = opening[0] = None
+        switching[0] = None
         raise_app(app[2])
         return
-    opening[0] = app
-    if button:
-        button.set_label('Opening…')
-        button.add_css_class('opening')
     for a in APPS:
         if a is not app and running(a[1]):
             close(a)
@@ -142,10 +156,11 @@ def show(button, app):
         target = switching[0]
         if target is None:
             return False
-        if any(running(a[1]) for a in APPS if a is not target):
+        if any(running(a[1]) for a in APPS if a is not target):  # wait until it quits (a big save can take long)
             if GLib.get_monotonic_time() < give_up[0]:
                 return True
             switching[0] = opening[0] = None
+            drop(KRITA_FILE)
             return False
         switching[0] = None
         start(target)
@@ -154,24 +169,38 @@ def show(button, app):
 
 
 give_up = [0]
+def busy():
+    return opening[0] and (running(opening[0][1]) or GLib.get_monotonic_time() - last_start[0] < 10_000_000)
+
+
+def drop(path):
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
+
+
 def on_request(monitor, f, other, event):
     """The Library asks: open a file in Krita (one app at a time, so the dock does it)."""
     if event not in (Gio.FileMonitorEvent.CREATED, Gio.FileMonitorEvent.CHANGES_DONE_HINT,
                      Gio.FileMonitorEvent.MOVED_IN, Gio.FileMonitorEvent.RENAMED) or not os.path.exists(REQUEST):
         return
     try:
-        req = json.load(open(REQUEST))
+        os.replace(REQUEST, REQUEST + '.taken')  # take it first: a newer request then stays for the next event
+        req = json.load(open(REQUEST + '.taken'))
     except (OSError, ValueError):
         return
-    os.remove(REQUEST)
     krita = APPS[0]
-    if running(krita[1]):
+    if busy():  # an app starts now: the dock ignores this, she taps Open in Krita again
+        return drop(REQUEST + '.taken')
+    if state(krita[1]) == 'active' and not switching[0]:  # not while the dock closes it (a new Krita would start)
         subprocess.Popen(['krita', req['file']], env=dict(os.environ, QT_QPA_PLATFORM='xcb'))  # goes to the open Krita
         raise_app(krita[2])
     else:
         with open(KRITA_FILE, 'w') as fh:  # krita-open (the service) opens it
             fh.write(req['file'])
         show(None, krita)
+    drop(REQUEST + '.taken')  # done: a .taken file at start means the dock stopped before this line
 
 
 RUNDIR = os.path.join(GLib.get_user_runtime_dir(), 'art-kit')
@@ -217,6 +246,8 @@ def backup_text():
         word, when = open(STATE).read().split()[:2]
         if word == 'ok':
             return '✓ Backed up ' + ago(datetime.datetime.fromisoformat(when))
+        if word == 'sync':
+            return '↻ Syncing'  # files still go up
     except (OSError, ValueError):
         pass
     return '✗ Not backed up'
@@ -236,7 +267,8 @@ def on_activate(app):
     if app.get_active_window():
         return
     provider = Gtk.CssProvider()
-    provider.load_from_data(CSS)
+    mon = Gdk.Display.get_default().get_monitors().get_item(0)
+    provider.load_from_data(CSS + (NARROW if mon and mon.get_geometry().width < 1200 else b''))  # portrait: all fits
     Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider,
                                               Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
     box = Gtk.Box(spacing=0)
@@ -275,11 +307,14 @@ def on_activate(app):
     app.monitor = monitor  # keep it alive
 
     win = Gtk.ApplicationWindow(application=app, title='Dock', decorated=False, resizable=False)
-    mon = win.get_display().get_monitors().get_item(0)
     win.set_default_size(mon.get_geometry().width if mon else 1280, HEIGHT)
     win.set_child(box)
     win.present()
     show(None, APPS[0])  # start with Krita in front
+    # A request from before this start (the dock restarted): do it now.
+    if not os.path.exists(REQUEST) and os.path.exists(REQUEST + '.taken'):
+        os.replace(REQUEST + '.taken', REQUEST)
+    on_request(None, None, None, Gio.FileMonitorEvent.CREATED)
 
 
 app = Gtk.Application(application_id='org.artkit.Dock')

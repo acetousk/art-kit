@@ -2,6 +2,10 @@
 
 A guide for parents.
 
+![A 91-second tour: your kid draws in Krita, does a lesson in the Library, and the parent sees every file. The video plays on its own and repeats.](docs/media/art-kit-tour.webp)
+
+This 91-second video plays on its own and repeats. It is a real test run on a 2 GB computer: your kid draws, saves, does a lesson, finds a picture, writes a note, and uses Sweet Home 3D and Blender. You can also [watch it with sound (MP4)](docs/media/art-kit-tour.mp4).
+
 ## In one minute
 - **What:** a tablet or laptop that does only art. When it turns on, your kid is in a drawing app.
 - **Apps:** Krita (drawing and painting), Sweet Home 3D (room and home design), Blender (drawing in 3D), and the Library (lessons and art to look at).
@@ -423,6 +427,7 @@ Each topic opens to a list: lesson number, title, what your kid learns, the app,
 | Internet | Your kid's account has **no network at all**. The firewall blocks it. |
 | Strangers / chat | No browser, no chat, no social apps, no accounts. |
 | Downloads and USB sticks | Blocked. Nothing comes in that the setup adult did not add. |
+| Starting another system from USB | Blocked. The setup adult sets a UEFI (start-up) password and turns off boot from USB. |
 | Ads, tracking | None. Nothing is sent out about your kid. |
 | Content | Every book and image is checked first. Museum images come from collections the setup adult looks at before adding. |
 | Breaking it | Your kid cannot change settings or delete apps. The setup adult can fix it, also from far away (optional). |
@@ -466,6 +471,7 @@ Open Backup with your kid (on the device or on your phone). Ask one or two:
 | Your kid is bored | Try another topic, or Inspire. Let them make their own project. |
 | An app does not open or the pen stops working | Restart the device (hold power 10 seconds). If it is still wrong, tell the setup adult. |
 | The dock shows ✗ next to Backed up | Tell the setup adult (often the Wi-Fi changed). |
+| The dock shows ↻ Syncing for hours | Files are still going up. Keep the device on Wi-Fi. If it stays, tell the setup adult. |
 | A book page or image seems wrong for your kid | Tell the setup adult. They remove it in a few minutes. |
 | Your kid wants a new app or more images | Ask the setup adult. Nothing is added without them. |
 
