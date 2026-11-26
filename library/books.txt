@@ -1,4 +1,10 @@
-# folder|book-name|pdf-url|pages (all or first-last)|remove pages (pdf page numbers)|credit
+# One book per line. Columns are split by "|". build-library.sh reads this file.
+# 1 folder: the shelf group (for CREDITS and the parents list). Pages go to Books/<name>/.
+# 2 name:   the book folder name. Use letters, digits and "-" only.
+# 3 url:    a direct link to the PDF. The script checks it (HTTP 200 after redirects).
+# 4 pages:  "all", or "first-last" (PDF page numbers) to keep only that range.
+# 5 remove: PDF page numbers to leave out, split by spaces. Empty = keep all pages in the range.
+# 6 credit: author, title, year, license. Goes into CREDITS.md.
 Drawing|Composition-Dow-1913|https://archive.org/download/compositionserie00dowauoft/compositionserie00dowauoft.pdf|all||Arthur Wesley Dow, Composition, 1913, public domain
 Drawing|Line-and-Form-Crane-1900|https://archive.org/download/line-and-form-by-walter-crane-1900/Line%20and%20Form%20by%20Walter%20Crane%20(1900).pdf|all||Walter Crane, Line and Form, 1900, public domain
 Drawing|Freehand-Perspective-Norton-1909|https://archive.org/download/freehandperspect00nortrich/freehandperspect00nortrich.pdf|all||Dora Miriam Norton, Freehand Perspective and Sketching, 1909, public domain
@@ -18,3 +24,4 @@ Interior-Design|House-in-Good-Taste-de-Wolfe-1913|https://archive.org/download/h
 Interior-Design|Principles-of-Home-Decoration-Wheeler-1903|https://archive.org/download/principlesofhome00wheeuoft/principlesofhome00wheeuoft.pdf|all||Candace Wheeler, Principles of Home Decoration, 1903, public domain
 Interior-Design|Art-of-Interior-Decoration-Wood-Burbank-1917|https://archive.org/download/artofinteriordec00wood/artofinteriordec00wood.pdf|all||Grace Wood and Emily Burbank, The Art of Interior Decoration, 1917, public domain
 Interior-Design|Decoration-of-Houses-Wharton-Codman-1897|https://archive.org/download/decorationofhous00wharrich/decorationofhous00wharrich.pdf|all||Edith Wharton and Ogden Codman, The Decoration of Houses, 1897, public domain
+Interior-Design|ADA-2010-Standards|https://www.ada.gov/assets/pdfs/2010-design-standards.pdf|all||U.S. Department of Justice, 2010 ADA Standards for Accessible Design, public domain

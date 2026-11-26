@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Library
+Comment=Art lessons, books, and pictures (offline)
+Exec=python3 /opt/art-kit/app/library-app.py
+Icon=accessories-dictionary
+Terminal=false
+Categories=Education;Graphics;
+StartupWMClass=org.artkit.Library

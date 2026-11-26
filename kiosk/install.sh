@@ -7,7 +7,7 @@ set -e
 
 # 1. linux-surface kernel (Surface devices only): pen (iptsd), touch, Wi-Fi fixes.
 if [ "$SURFACE" = yes ]; then
-dnf config-manager addrepo --from-repofile=https://pkg.surfacelinux.com/fedora/linux-surface.repo
+dnf config-manager addrepo --overwrite --from-repofile=https://pkg.surfacelinux.com/fedora/linux-surface.repo
 dnf install -y --allowerasing kernel-surface iptsd libwacom-surface kernel-surface-default-watchdog
 dnf install -y surface-secureboot
 systemctl enable linux-surface-default-watchdog.path
@@ -22,6 +22,7 @@ hostnamectl set-hostname "$HOST"
 
 # 3. Kid user: no sudo, GDM autologin into the Krita kiosk session.
 id "$KID" >/dev/null 2>&1 || useradd -m "$KID"
+passwd -l "$KID"
 cat > /etc/gdm/custom.conf <<EOF
 [daemon]
 AutomaticLoginEnable=True
@@ -30,8 +31,8 @@ EOF
 mkdir -p /var/lib/AccountsService/users
 printf '[User]\nSession=krita-kiosk\nSystemAccount=false\n' > /var/lib/AccountsService/users/$KID
 
-# 4. Session = GNOME Kiosk + Krita only. Root-owned files; the kid cannot edit them.
-#    If Krita quits, systemd starts it again.
+# 4. Session = GNOME Kiosk + Krita, the dock, and the Library app. Root-owned files; the kid cannot edit them.
+#    If an app quits, systemd starts it again.
 cat > /usr/share/wayland-sessions/krita-kiosk.desktop <<'EOF'
 [Desktop Entry]
 Name=Krita Kiosk
@@ -47,6 +48,8 @@ cat > /etc/systemd/user/gnome-session@krita-kiosk.target.d/session.conf <<'EOF'
 [Unit]
 Requires=org.gnome.Kiosk.target
 Requires=krita-kiosk.service
+Wants=art-dock.service
+Wants=art-library.service
 Wants=org.gnome.SettingsDaemon.A11ySettings.target
 Wants=org.gnome.SettingsDaemon.MediaKeys.target
 Wants=org.gnome.SettingsDaemon.Power.target
@@ -58,7 +61,32 @@ BindsTo=gnome-session.target
 After=gnome-session.target
 
 [Service]
+Environment=QT_QPA_PLATFORM=xcb
 ExecStart=/usr/bin/krita --fullscreen
+Restart=always
+RestartSec=1
+EOF
+# Library app and dock (steps 12 and 14). All apps run on X11 (Xwayland): the dock raises them with xdotool.
+cat > /etc/systemd/user/art-library.service <<'EOF'
+[Unit]
+Description=Library app (kiosk)
+BindsTo=gnome-session.target
+After=gnome-session.target
+
+[Service]
+Environment=GDK_BACKEND=x11
+ExecStart=/usr/bin/python3 /opt/art-kit/app/library-app.py
+Restart=always
+RestartSec=1
+EOF
+cat > /etc/systemd/user/art-dock.service <<'EOF'
+[Unit]
+Description=Dock (kiosk)
+BindsTo=gnome-session.target
+After=gnome-session.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/art-kit/dock/kiosk-dock.py
 Restart=always
 RestartSec=1
 EOF
@@ -72,6 +100,14 @@ for n in 1 2 3 4 5 6 7 8 9 10 11 12; do
   echo "switch-to-session-$n=['']" >> /etc/dconf/db/local.d/00-kiosk
   echo "/org/gnome/mutter/wayland/keybindings/switch-to-session-$n" >> /etc/dconf/db/local.d/locks/00-kiosk
 done
+echo '[org/gnome/desktop/wm/keybindings]' >> /etc/dconf/db/local.d/00-kiosk
+for key in switch-applications switch-applications-backward close; do
+  echo "$key=['']" >> /etc/dconf/db/local.d/00-kiosk
+  echo "/org/gnome/desktop/wm/keybindings/$key" >> /etc/dconf/db/local.d/locks/00-kiosk
+done
+echo "[org/gnome/mutter]" >> /etc/dconf/db/local.d/00-kiosk
+echo "overlay-key=''" >> /etc/dconf/db/local.d/00-kiosk
+echo "/org/gnome/mutter/overlay-key" >> /etc/dconf/db/local.d/locks/00-kiosk
 grep -q '^system-db:local' /etc/dconf/profile/user 2>/dev/null || printf 'user-db:user\nsystem-db:local\n' > /etc/dconf/profile/user
 dconf update
 echo 'kernel.sysrq = 0' > /etc/sysctl.d/90-kiosk.conf
@@ -106,7 +142,7 @@ echo "$ADMIN ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-$ADMIN
 chmod 440 /etc/sudoers.d/90-$ADMIN
 
 # 10. Tailscale (remote access) and automatic updates (night reboot: see kiosk-maintenance-plan.md).
-dnf config-manager addrepo --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
+dnf config-manager addrepo --overwrite --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
 dnf install -y tailscale dnf5-plugin-automatic
 systemctl enable --now tailscaled
 mkdir -p /etc/dnf
@@ -116,41 +152,30 @@ systemctl enable dnf5-automatic.timer
 # 11. T3 Code for the admin user (never as root).
 su - "$ADMIN" -c 'curl -fsSL https://t3.codes/install.sh | sh'
 
-# 12. Library (read-only for the kid, about 3.2 GB). Needs library-inspiration.txt next to this script.
-#     Tutorials/1-Graphic-Design: "Graphic Design and Print Production Fundamentals", ch. 1-3 by Alex Hass
-#       (BCcampus 2015, CC BY 4.0), as page images.
-#     Tutorials/2-Pepper-and-Carrot + 3-Brushes: David Revoy, www.peppercarrot.com (CC BY 4.0 / brushes CC0).
-#     Inspiration: Art Institute of Chicago open access (CC0), 5 collections.
-dnf install -y unzip poppler-utils
-UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36"
-LIB=/home/$KID/Library
-T=$LIB/Tutorials
-mkdir -p "$T/1-Graphic-Design" "$T/2-Pepper-and-Carrot" "$T/3-Brushes" "$LIB/Inspiration"
+# 12. Library (read-only for the kid) and the Library app. build-library.sh lists the sources and makes the search index.
+dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown poppler-utils urw-base35-fonts unzip wget xdotool
+bash "$(dirname "$0")/../library/build-library.sh" || echo "WARNING: build-library.sh failed. Run it again (it resumes)."
+rm -rf /opt/art-kit/app && mkdir -p /opt/art-kit && cp -r "$(dirname "$0")/../app" /opt/art-kit/app
 
-GD=https://opentextbc.ca/graphicdesign/open/download?type=pdf
-curl -fsSL -A "$UA" -o /tmp/gd.pdf "$GD"
-pdftoppm -f 3 -l 3 -r 130 -png /tmp/gd.pdf "$T/1-Graphic-Design/000-license"      # credits + CC BY page
-pdftoppm -f 17 -l 95 -r 130 -png /tmp/gd.pdf "$T/1-Graphic-Design/page"           # ch. 1-3
-rm -f /tmp/gd.pdf
-
-PC=https://www.peppercarrot.com/0_sources
-for ep in $(curl -fsSL "$PC/" | grep -oE 'href="ep[0-9]+_[^"/]+/"' | sed 's/href="//;s/\/"//'); do
-  curl -fsSL -o /tmp/art.zip "$PC/$ep/zip/${ep}_art-pack.zip" || { echo "skip $ep"; continue; }
-  unzip -oq /tmp/art.zip -d "$T/2-Pepper-and-Carrot/$ep"
+# 13. Offline 3D apps. Keep network and file access limited for the kid.
+dnf install -y flatpak
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install -y --noninteractive flathub com.sweethome3d.Sweethome3d org.blender.Blender
+for app in com.sweethome3d.Sweethome3d org.blender.Blender; do
+  flatpak override --system "$app" --unshare=network --nofilesystem=host --nofilesystem=home \
+    --filesystem=/home/$KID/Art --filesystem=/home/$KID/Library:ro
 done
-rm -f /tmp/art.zip
-curl -fsSL -o /tmp/brushes.zip https://www.peppercarrot.com/extras/resources/deevad-bundle_25.01.zip
-unzip -oq /tmp/brushes.zip -d "$T/3-Brushes" && rm -f /tmp/brushes.zip
+flatpak override --system org.blender.Blender --nosocket=wayland --socket=x11   # X11: the dock can raise it
 
-grep -v '^#' "$(dirname "$0")/../library/inspiration.txt" | while IFS='|' read -r dir file url credit; do
-  mkdir -p "$LIB/Inspiration/$dir"
-  curl -fsSL -A "$UA" -o "$LIB/Inspiration/$dir/$file" "$url" || echo "skip $file"
-  echo "$file: $credit" >> "$LIB/Inspiration/CREDITS.txt"
-  sleep 1   # be polite to the museum server
-done
+# 14. Dock at the bottom edge: Krita, Sweet Home 3D, Blender, Library, battery, backup state.
+#     The window rules need gnome-kiosk 51 or newer (Fedora 45+). MONITOR = the screen name, for example eDP-1.
+install -D -m 755 "$(dirname "$0")/dock/kiosk-dock.py" /opt/art-kit/dock/kiosk-dock.py
+MON=$(grep -l '^connected' /sys/class/drm/card*-*/status | head -n 1 | cut -d/ -f5 | cut -d- -f2-)
+mkdir -p /usr/local/share/gnome-kiosk
+sed "s/MONITOR/$MON/" "$(dirname "$0")/dock/window-config.ini" > /usr/local/share/gnome-kiosk/window-config.ini
 
-chown -R root:root "$LIB"
-chmod -R a+rX,go-w "$LIB"
+# 15. Daily page for the family at 21:00. The backup (60-backup.sh) needs the Tresorit installer: manual step i.
+sh "$(dirname "$0")/70-daily.sh"
 
 echo "Done. Manual steps left: see the comment block at the end of this file."
 
@@ -169,3 +194,5 @@ echo "Done. Manual steps left: see the comment block at the end of this file."
 # h. Test: pen pressure in Krita, Ctrl+Alt+F2 (must do nothing), quit Krita (must restart), Scripts menu (must be empty),
 #    screen rotation, low-battery action,
 #    sudo -u $KID curl -sI https://fedoraproject.org (must fail), tailscale ssh $ADMIN@$HOST (must work).
+# i. Backup: set TRESORIT_EMAIL in kit.conf. Download tresorit_installer.run (tresorit.com/download). Then as root:
+#    sh kiosk/60-backup.sh /path/to/tresorit_installer.run   (type the Tresorit password when asked).

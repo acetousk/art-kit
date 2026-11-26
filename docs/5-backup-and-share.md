@@ -15,18 +15,18 @@ Rule for the kid, said out loud on day one: *"Everything on this computer, your 
 ## Set up (30 min)
 1. Make a Tresorit account for the admin (or use yours). Make two tresors: `Backup` and `From Family`.
 2. Share `Backup` with each parent as **Reader**. Share `From Family` with each parent as **Editor**.
-3. On the kiosk, run `kiosk/60-backup.sh` (installs tresorit-cli, signs in as admin, syncs both tresors). `Backup` syncs everything, so parents see everything and a new device can be restored in one step.
+3. On the kiosk, run `kiosk/60-backup.sh` (installs tresorit-cli, signs in as admin, syncs both tresors). `Backup` syncs the kid home except `~/Library`, plus an `/etc` archive without password hashes. Rebuild `~/Library` with `library/build-library.sh` on a new device. Parents can see the synced files.
 4. Test: save a drawing in Krita. It shows up in the parent's Tresorit phone app in a few minutes.
 5. Test: the parent puts a photo in `From Family`. It shows up in the kiosk's Library app.
 6. The kid can also get their own files on a phone or school laptop: share `Backup` with the kid's own Tresorit account (Reader).
 
-Only images (`.png .jpg`), PDFs, and `.txt` notes from `From Family` are shown in the Library. Other file types are ignored.
+The backup timer copies only `.png`, `.jpg`, `.jpeg`, `.pdf`, and `.txt` files from `From Family` to the read-only `~/Library/From Family` folder.
 
 ## Using it to understand what your kid is doing
 | What you want | How Tresorit shows it |
 |---|---|
 | **Where they are in the course** | Files are named by topic and lesson: `Backup/Art/Drawing/023 …`, `Backup/Art/Interior Design/My-Bedroom/…`. The newest folder is the current lesson. |
-| **What they did today** | A nightly job writes `Backup/Art/Daily/<date>.html`: lessons opened, files saved, time in each app. The kid can open it too. |
+| **What they did today** | The daily job (`kiosk/70-daily.sh`) writes `Backup/Art/Daily/<date>.html`: lessons opened, files saved, time in each app. The kid can open it too. |
 | **How a piece grew** | Each save is a new version. Open a file's **version history** to see the steps, from sketch to finished. |
 | **What they made this week** | Sort `Backup` by date in the Tresorit app. |
 

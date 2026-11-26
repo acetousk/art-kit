@@ -1,0 +1,5 @@
+# One Pepper&Carrot episode per line: episode|zip-url|credit. build-library.sh unzips each art pack
+# into Painting/Pepper-and-Carrot/<episode>/ (the .kra files sit at the root of the zip).
+ep06_The-Potion-Contest|https://www.peppercarrot.com/0_sources/ep06_The-Potion-Contest/zip/ep06_The-Potion-Contest_art-pack.zip|David Revoy, Pepper&Carrot episode 6: The Potion Contest, www.peppercarrot.com, CC BY 4.0
+ep10_Summer-Special|https://www.peppercarrot.com/0_sources/ep10_Summer-Special/zip/ep10_Summer-Special_art-pack.zip|David Revoy, Pepper&Carrot episode 10: Summer Special, www.peppercarrot.com, CC BY 4.0
+ep20_The-Picnic|https://www.peppercarrot.com/0_sources/ep20_The-Picnic/zip/ep20_The-Picnic_art-pack.zip|David Revoy, Pepper&Carrot episode 20: The Picnic, www.peppercarrot.com, CC BY 4.0

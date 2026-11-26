@@ -1,0 +1,14 @@
+# slug|url|title|license  (saved offline to /tmp/books/revoy/<slug>.html and .txt)
+# Note: David Revoy marks his tutorial pages "CC BY 4.0, AI derivation prohibited". The Revoy lessons were written with AI help from these pages. The kit owner chose to keep them under CC BY 4.0, with full credit.
+krita-brushes-2025-01-bundle|https://www.davidrevoy.com/article1060/krita-brushes-2025-01-bundle|Krita brushes 2025-01 bundle|CC0 (brushes); CC BY 4.0 (artworks)
+workflow-overview-2022|https://www.davidrevoy.com/article949/overview-of-my-krita-digital-painting-workflow-end-2022|Overview of my Krita Digital Painting Workflow − end 2022|CC BY 4.0
+fix-drawing-and-linearts|https://www.davidrevoy.com/article865/tips-to-fix-your-drawing-and-linearts-on-krita|Tips to fix your drawing and linearts on Krita|CC BY 4.0
+colorize-mask-advanced-tips|https://www.davidrevoy.com/article836/krita-colorize-mask-advanced-tips|Krita Colorize-Mask: Advanced Tips|CC BY 4.0
+shading-workflow-for-comics|https://www.davidrevoy.com/article839/shading-workflow-for-comics-krita|Shading workflow for comics - Krita|CC BY 4.0
+background-painting-tip|https://www.davidrevoy.com/article860/a-background-painting-tip-that-saved-me-tons-of-time|A background painting tip that saved me tons of time.|CC BY 4.0
+repetitive-patterns-perspective|https://www.davidrevoy.com/article823/paint-faster-repetitive-patterns-in-perspective-step-by-step|Paint faster repetitive patterns in perspective, step by step.|CC BY 4.0
+turbulence-magic-effects|https://www.davidrevoy.com/article825/turbulence-for-magic-effects-krita-tutorial|Turbulence for Magic Effects, Krita tutorial|CC BY 4.0
+episode-35-production-report|https://www.davidrevoy.com/article848/episode-35-production-report|Episode 35 Production Report|CC BY 4.0
+episode-38-production-report|https://www.davidrevoy.com/article957/episode-38-production-report-1|Episode 38 Production Report|CC BY 4.0
+episode-39-production-report|https://www.davidrevoy.com/article1078/episode-39-production-report|Episode 39 Production Report (wip)|CC BY 4.0
+comic-strip-from-a-to-z|https://www.davidrevoy.com/article1150/tutorial-comic-strip-from-a-to-z-with-krita|Tutorial: a Comic strip from A to Z with Krita|CC BY-SA 4.0
