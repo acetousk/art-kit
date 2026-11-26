@@ -99,3 +99,7 @@ jobs:
             --notes "Downloads: Windows installer, Mac (Apple Silicon and Intel), Linux. App sources (GPL): see THIRD-PARTY.md."
           gh release upload "$tag" out/* --clobber
           if [ "$GITHUB_REF_TYPE" = tag ]; then gh release edit "$tag" --draft=false; fi
+
+  smoke:
+    needs: release
+    uses: ./.github/workflows/release-smoke.yml

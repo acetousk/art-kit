@@ -6,6 +6,7 @@ first-run app settings, the books download, and a daily update check.
 The books and pictures download by themselves at each start until they are all there (one builder: build_library.py).
 Data: ~/Art Kit/ (Art/ with Notes/, Library/). Usage: desktop.py [--root DIR] [--selftest | --get-library]
 Env: ART_KIT_APPS=<dir> (the bundled apps; default: next to the app)  ART_KIT_UPDATE_URL=<url> (tests)  ART_KIT_KIOSK=1 (no update check)
+     ART_KIT_NO_DOWNLOAD=1 (no books download)  ART_KIT_URL_FILE=<file> (the app writes its local URL with the token there; tests)
 """
 import argparse, glob, hmac, http.server, json, os, plistlib, re, secrets, shutil, subprocess, sys, tempfile, threading, time
 import urllib.request, webbrowser
@@ -148,7 +149,7 @@ class Desktop:
     # ---------- books and pictures ----------
     def get_library(self, show=None):
         """Download the books and pictures in the background. show(job): run here and report each step (the terminal)."""
-        if self.job['running'] or self.conf.get('library'):
+        if self.job['running'] or self.conf.get('library') or os.environ.get('ART_KIT_NO_DOWNLOAD') == '1':
             return {'ok': True}
         self.job.update(running=True, failed=[], text='Starting…')
         self.save_conf(library_started=True)
@@ -363,6 +364,9 @@ def main():
         return window(html='<p style="font:20px sans-serif;margin:40px">Art Kit is open already.</p>', width=420, height=160)
     desk.setup()
     url = serve(desk)
+    if os.environ.get('ART_KIT_URL_FILE'):  # tests (release-smoke.yml)
+        with open(os.environ['ART_KIT_URL_FILE'], 'w', encoding='utf-8') as f:
+            f.write(url)
     if a.selftest:
         try:
             selftest(url)

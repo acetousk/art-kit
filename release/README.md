@@ -46,5 +46,5 @@ Downloads go to `release/cache/` (they resume). Run the app from the source: `py
 - Data: `~/Art Kit/` (`Art/`, `Art/Notes/`, `Library/`). The lessons ship in the app; the first start copies them and builds the search index.
 - Books and pictures: the app runs `library/build_library.py` (the kiosk builder) at each start until all is there (about 3 GB). The first start shows a progress screen. Linux `install.sh` runs it in the terminal (`ArtKit/AppRun --get-library`).
 - Kit settings, only when no config exists: Krita defaults (`kritarc`), Blender preferences (no splash, Emulate 3 Button Mouse), Sweet Home 3D Java options.
-- Env for tests: `ART_KIT_APPS=<dir>` (the bundled apps), `ART_KIT_UPDATE_URL=<url>` (a fake release JSON), `ART_KIT_KIOSK=1` (no update check).
+- Env for tests: `ART_KIT_APPS=<dir>` (the bundled apps), `ART_KIT_UPDATE_URL=<url>` (a fake release JSON), `ART_KIT_KIOSK=1` (no update check), `ART_KIT_NO_DOWNLOAD=1` (no books download), `ART_KIT_URL_FILE=<file>` (the app writes its URL with the token there).
 - Signing: none. Windows SmartScreen and macOS Gatekeeper show one warning. Krita, Blender, and Sweet Home 3D keep their own signatures.
