@@ -162,7 +162,7 @@ jobs:
             Shot art-kit
             foreach ($n in 'Krita', 'Blender', 'Sweet Home 3D') {  # the app row: /api/app, the same code and paths as the buttons
               Invoke-RestMethod "$base/api/app?t=$tok&name=$([uri]::EscapeDataString($n))" | ConvertTo-Json | Add-Content smoke\apps.log
-              if (WaitWin $n 120) { Start-Sleep 5; if ($n -eq 'Blender') { Start-Sleep 25 }; Shot $n }  # software OpenGL draws slowly else { $fail += $n; Shot "$n-failed" }
+              if (WaitWin $n 120) { Start-Sleep 5; if ($n -eq 'Blender') { Start-Sleep 25 }; Shot $n } else { $fail += $n; Shot "$n-failed" }  # Blender: software OpenGL draws slowly
               Get-Process | Where-Object { $_.Path -like "$A\*" -and $_.Id -ne $ak.Id } | Stop-Process -Force
             }
           } else { $fail += 'Art-Kit'; Shot art-kit-failed }
