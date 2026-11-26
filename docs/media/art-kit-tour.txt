@@ -1,0 +1,21 @@
+This is art-kit, a safe art computer for your kid.
+When it turns on, your kid is in Krita, drawing a cat with the pen.
+Your kid saves it as my-cat in their own Art folder.
+Next, your kid opens the Library from the dock.
+The Tutorials shelf holds about three hundred real art lessons.
+Today it is Drawing 41, a room at an angle.
+Each lesson gives the idea, short steps, and new words.
+A page from an old book shows how an artist did it.
+When the room is drawn, your kid taps Done.
+Inspire shows a surprise picture from a museum.
+One tap keeps a favorite.
+Another tap opens it in Krita, to study or paint.
+Search finds every lesson about cats.
+In Notes, your kid writes a short note to Mom.
+In Sweet Home 3D, four walls make a room.
+Blender opens, ready for drawing in 3D.
+Back in Krita, the cat is still there.
+You see every file your kid makes, through the backup.
+No internet, no web browser, and one app at a time.
+It runs on a laptop with two gigabytes of memory.
+art-kit is free. Find it on GitHub.
