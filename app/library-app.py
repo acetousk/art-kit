@@ -66,7 +66,12 @@ def on_activate(app, lib):
     # A dead proxy: if something slips past the checks, it still cannot reach a network.
     session.set_proxy_settings(WebKit.NetworkProxyMode.CUSTOM,
                                WebKit.NetworkProxySettings.new('http://127.0.0.1:9', None))
-    ctx = WebKit.WebContext.new()
+    # 2 GB laptops: small caches, and the web process frees memory early (about 500 MB at most).
+    mem = WebKit.MemoryPressureSettings.new()
+    mem.set_memory_limit(500)
+    WebKit.NetworkSession.set_memory_pressure_settings(mem)
+    ctx = WebKit.WebContext(memory_pressure_settings=mem)
+    ctx.set_cache_model(WebKit.CacheModel.DOCUMENT_VIEWER)
     ctx.register_uri_scheme('library', on_request, lib)
     sec = ctx.get_security_manager()
     sec.register_uri_scheme_as_secure('library')

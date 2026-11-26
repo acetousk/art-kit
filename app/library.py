@@ -12,6 +12,29 @@ MIME = {'.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.pn
         '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
         '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8'}
 LESSON = re.compile(r'^(\d{3}) (.+)$')
+# Shelf names a kid understands. The folder names do not change.
+LABELS = {'Revoy': "David Revoy's Studio"}
+try:
+    from PIL import Image  # python3-pillow: small thumbnails save memory on 2 GB
+except ImportError:
+    Image = None
+
+
+def plain(md):
+    """Markdown -> plain text for search snippets."""
+    md = re.sub(r'(^|\n)\s*(#+|[-*]|\d+\.)\s+', ' ', md)
+    return re.sub(r'\s+', ' ', re.sub(r'\*\*|__|`|^#+|\[|\]\([^)]*\)', '', md))
+
+
+def short_name(path):
+    """'Alphonse-Mucha_Zodiaque-La-Plume_111986.jpg' -> 'zodiaque-la-plume.jpg'"""
+    stem, ext = os.path.splitext(os.path.basename(path))
+    parts = stem.split('_')
+    stem = parts[1] if len(parts) == 3 else stem
+    if re.match(r'page-\d+$', stem):  # a book page: add the book name
+        stem = '-'.join(os.path.basename(os.path.dirname(path)).split('-')[:2]) + '-' + stem
+    words = re.findall(r'[a-z0-9]+', stem.lower())
+    return '-'.join(words[:4] if len(words) > 4 else words)[:40] + ext.lower()
 
 
 def parse_read(line):
@@ -44,7 +67,7 @@ class Library:
     # ---------- helpers ----------
     def url(self, path):
         """library:// URL for a file under Library or the cache."""
-        for base, host in ((self.lib, 'lib'), (self.cache, 'cache')):
+        for base, host in ((self.lib, 'lib'), (self.cache, 'cache'), (self.art, 'art')):
             if path.startswith(base + os.sep):
                 return 'library://%s/%s' % (host, quote(os.path.relpath(path, base)))
         raise ValueError(path)
@@ -82,8 +105,27 @@ class Library:
     def image(self, coll, f, credits=None):
         credits = self.credits() if credits is None else credits
         p = os.path.join(self.lib, 'Inspiration', coll, f)
-        return {'coll': coll, 'file': f, 'url': self.url(p), 'rel': os.path.relpath(p, self.lib),
+        return {'coll': coll, 'file': f, 'url': self.url(p), 'rel': os.path.relpath(p, self.lib), 'thumb': self.thumb_url(p),
                 'credit': credits.get((coll, f), '')}
+
+    def thumb_url(self, p):
+        return self.url(p).replace('library://lib/', 'library://thumb/', 1)
+
+    def thumb(self, rel):
+        """A 400 px JPEG in ~/.cache/library/thumbs, made on first use. No Pillow: the original."""
+        src = self.inside(rel)
+        if Image is None:
+            return src
+        t = os.path.join(self.cache, 'thumbs', re.sub(r'\W', '_', rel) + '.jpg')
+        if not os.path.exists(t) or os.path.getmtime(t) < os.path.getmtime(src):
+            os.makedirs(os.path.dirname(t), exist_ok=True)
+            with Image.open(src) as im:
+                im.draft('RGB', (400, 400))  # JPEG: decode small, uses less memory
+                im = im.convert('RGB')
+                im.thumbnail((400, 400))
+                im.save(t + '.tmp', 'JPEG', quality=82)
+            os.replace(t + '.tmp', t)
+        return t
 
     # ---------- tutorials ----------
     def topics(self):
@@ -94,7 +136,7 @@ class Library:
         for name in sorted(os.listdir(t), key=key) if os.path.isdir(t) else []:
             ls = self.lessons(name, done)
             if ls:
-                out.append({'name': name, 'count': len(ls), 'done': sum(l['done'] for l in ls)})
+                out.append({'name': name, 'label': LABELS.get(name, name), 'count': len(ls), 'done': sum(l['done'] for l in ls)})
         return out
 
     def lessons(self, topic, done=None):
@@ -116,8 +158,14 @@ class Library:
     def lesson(self, topic, dir):
         import markdown
         text = open(os.path.join(self.inside(os.path.join('Tutorials', topic, dir)), 'README.md')).read()
-        pages, other = [], []
+        pages, other, head, body = [], [], {}, []
+        text, _, source = text.partition('\n---\nSource:')
         for line in text.splitlines():
+            m = re.match(r'\*\*(You make|Builds on|Time|Read):\*\*\s*(.*?)\s*$', line)
+            if m:
+                head[m.group(1)] = m.group(2)
+            else:  # drop "(Norton, PDF 20)": the Source line names the book
+                body.append(re.sub(r'\s*\([^()]*\bPDF (pages? )?\d[^()]*\)', '', line))
             if line.startswith('**Read:**'):
                 for src, nums in parse_read(line):
                     if not nums:
@@ -128,8 +176,14 @@ class Library:
                         other.append(src + ' (book not found)')
         ls = self.lessons(topic)
         i = [l['dir'] for l in ls].index(dir)
-        return {'topic': topic, 'dir': dir, 'title': ls[i]['title'], 'num': ls[i]['num'],
-                'done': ls[i]['done'], 'html': markdown.markdown(text), 'pages': pages, 'other': other,
+        nums = re.findall(r'\d{3}', head.get('Builds on', ''))  # the last one is the one just before
+        first = next(({'dir': l['dir'], 'title': l['title']} for l in ls if nums and l['num'] == max(nums)), None)
+        make = re.sub(r'~/Art/([^/]+)/([^/\s]+\.\w+)', r'<b>\2</b> in your \1 folder', html.escape(head.get('You make', '')))
+        html_ = re.sub(r'(You should see:)', r'<span class="see">\1</span>', markdown.markdown('\n'.join(body)))
+        return {'topic': topic, 'label': LABELS.get(topic, topic), 'dir': dir, 'title': ls[i]['title'], 'num': ls[i]['num'],
+                'done': ls[i]['done'], 'html': html_, 'pages': pages, 'other': other,
+                'make': make, 'time': head.get('Time', ''), 'first': first,
+                'source': '; '.join(x for x in (head.get('Read', ''), source.strip()) if x),
                 'prev': ls[i - 1]['dir'] if i > 0 else '', 'next': ls[i + 1]['dir'] if i + 1 < len(ls) else ''}
 
     def mark_done(self, topic, dir):
@@ -148,7 +202,7 @@ class Library:
     def collections(self):
         d = os.path.join(self.lib, 'Inspiration')
         return [{'name': c, 'count': len(self.images(c)),
-                 'cover': next((self.url(os.path.join(d, c, f)) for f in self.images(c)), '')} for c in sorted(os.listdir(d))
+                 'cover': next((self.thumb_url(os.path.join(d, c, f)) for f in self.images(c)), '')} for c in sorted(os.listdir(d))
                 if os.path.isdir(os.path.join(d, c))] if os.path.isdir(d) else []
 
     def lucky(self):
@@ -166,9 +220,21 @@ class Library:
         shutil.copy2(src, os.path.join(dst, os.path.basename(src)))
         return {'ok': True}
 
-    def krita(self, rel):
-        self.launch(['krita', self.inside(rel)])
-        return {'ok': True}
+    def picks(self):
+        d = os.path.join(self.art, 'Favorites')
+        return [{'url': self.url(os.path.join(d, f)), 'name': f, 'rel': f, 'art': 1}
+                for f in sorted(os.listdir(d)) if f.lower().endswith(IMG)] if os.path.isdir(d) else []
+
+    def krita(self, rel, art=False):
+        """Copy the picture to ~/Art/Inspire with a short name, so she can save it. Then open the copy."""
+        src = self.inside(rel, os.path.join(self.art, 'Favorites') if art else None)
+        dst = os.path.join(self.art, 'Inspire', short_name(src))
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        if not os.path.exists(dst):  # keep her changes if she opened it before
+            shutil.copyfile(src, dst)
+            os.chmod(dst, 0o644)
+        self.launch(['krita', dst])
+        return {'ok': True, 'name': os.path.basename(dst)}
 
     # ---------- family + note ----------
     def family(self):
@@ -177,7 +243,7 @@ class Library:
         for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
             p, ext = os.path.join(d, f), os.path.splitext(f)[1].lower()
             if ext in IMG:
-                out.append({'name': f, 'kind': 'image', 'url': self.url(p), 'rel': os.path.relpath(p, self.lib)})
+                out.append({'name': f, 'kind': 'image', 'url': self.url(p), 'thumb': self.thumb_url(p), 'rel': os.path.relpath(p, self.lib)})
             elif ext == '.txt':
                 out.append({'name': f, 'kind': 'text', 'text': open(p, errors='replace').read()})
             elif ext == '.pdf':
@@ -208,8 +274,16 @@ class Library:
                     when = datetime.datetime.strptime(f[:15], '%Y-%m-%d-%H%M').strftime('%a %d %b %Y, %H:%M')
                 except ValueError:
                     when = f[:-4]
-                out.append({'when': when, 'text': open(os.path.join(d, f), errors='replace').read()})
+                out.append({'when': when, 'file': f, 'text': open(os.path.join(d, f), errors='replace').read()})
         return out
+
+    def delete_note(self, f):
+        """Move the note to Notes/Deleted (the backup keeps it, a parent can bring it back)."""
+        d = os.path.join(self.art, 'Notes')
+        p = self.inside(f, d)
+        os.makedirs(os.path.join(d, 'Deleted'), exist_ok=True)
+        os.replace(p, os.path.join(d, 'Deleted', os.path.basename(p)))
+        return {'ok': True}
 
     # ---------- search ----------
     def search(self, q):
@@ -221,14 +295,17 @@ class Library:
         con = sqlite3.connect('file:%s?mode=ro' % quote(db), uri=True)
         out = {'lessons': [], 'pages': [], 'images': []}
         credits = self.credits()
-        for kind, title, ref, snip in con.execute(
-                "SELECT kind, title, ref, snippet(docs, 3, char(1), char(2), '…', 14) FROM docs "
-                "WHERE docs MATCH ? ORDER BY rank LIMIT 200", (fts,)):
-            snip = html.escape(snip).replace('\x01', '<b>').replace('\x02', '</b>')
+        whole = [re.compile(r'\b%s\b' % re.escape(w), re.I) for w in words]
+        rows = con.execute("SELECT kind, title, ref, snippet(docs, 3, char(1), char(2), '…', 14), body FROM docs "
+                           "WHERE docs MATCH ? ORDER BY rank LIMIT 200", (fts,)).fetchall()
+        # Title with the whole word first, then the whole word in the text, then "cat" in "catch".
+        rows.sort(key=lambda x: 0 if all(w.search(x[1]) for w in whole) else 1 if all(w.search(x[4]) for w in whole) else 2)
+        for kind, title, ref, snip, _ in rows:
+            snip = html.escape(plain(snip)).replace('\x01', '<b>').replace('\x02', '</b>')
             a, b = ref.split('/', 1)
             r = {'title': title, 'snippet': snip}
             if kind == 'lesson':
-                r.update(topic=a, dir=b)
+                r.update(topic=a, dir=b, title=LABELS.get(a, a) + ' · ' + b)
             elif kind == 'page':
                 r.update(book=a, page=int(b))
             else:
@@ -250,6 +327,10 @@ class Library:
                 p = self.inside(path)
             elif host == 'cache':
                 p = self.inside(path, self.cache)
+            elif host == 'thumb':
+                p = self.thumb(path)
+            elif host == 'art':  # her own pictures (My picks)
+                p = self.inside(path, self.art)
             elif host == 'api':
                 f = {'topics': lambda: self.topics(),
                      'lessons': lambda: self.lessons(q['topic']),
@@ -260,7 +341,9 @@ class Library:
                      'collection': lambda: [self.image(q['name'], f) for f in self.images(q['name'])],
                      'lucky': lambda: self.lucky(),
                      'save': lambda: self.save(q['rel']),
-                     'krita': lambda: self.krita(q['rel']),
+                     'krita': lambda: self.krita(q['rel'], q.get('art')),
+                     'picks': lambda: self.picks(),
+                     'delnote': lambda: self.delete_note(q['file']),
                      'family': lambda: self.family(),
                      'note': lambda: self.note(q['text']),
                      'notes': lambda: self.notes(),

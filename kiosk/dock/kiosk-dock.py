@@ -28,6 +28,8 @@ button:active { background: #3a3a40; }
 button.running { color: #e8e8ec; background-image: linear-gradient(#d9a441, #d9a441);
                  background-size: 28px 4px; background-position: 50% 88%; background-repeat: no-repeat; }
 button.front { color: #ffffff; background-color: #34343a; }
+@keyframes pulse { from { opacity: 1; } to { opacity: 0.4; } }
+button.opening { color: #ffffff; animation: pulse 0.7s ease-in-out infinite alternate; }
 label.status { color: #8e8e95; font-size: 16px; margin: 0 16px; }
 """
 
@@ -95,10 +97,16 @@ def start(app):
         subprocess.Popen(['systemd-run', '--user', '--quiet', '--collect', '--unit=' + unit] + cmd)
     else:
         subprocess.Popen(['systemctl', '--user', 'start', unit])
-    # Raise it when its window shows: try every 2 s for 2 min.
+    # Raise it when its window shows: try every 0.5 s for 2 min. Then its button stops saying "Opening…".
     last_start[0] = GLib.get_monotonic_time()
     deadline[0] = GLib.get_monotonic_time() + 120_000_000
-    GLib.timeout_add_seconds(2, lambda: not raise_app(wmclass) and GLib.get_monotonic_time() < deadline[0])
+
+    def wait():
+        if raise_app(wmclass) or GLib.get_monotonic_time() > deadline[0]:
+            opening[0] = None
+            return False
+        return True
+    GLib.timeout_add(500, wait)
 
 
 def close(app):
@@ -114,9 +122,13 @@ def show(button, app):
     """One app at a time (less memory): close the open app, then start the one she tapped.
     The open app may ask "Save changes?". If she cancels, it stays open; a new tap asks again."""
     if running(app[1]):
-        switching[0] = None
+        switching[0] = opening[0] = None
         raise_app(app[2])
         return
+    opening[0] = app
+    if button:
+        button.set_label('Opening…')
+        button.add_css_class('opening')
     for a in APPS:
         if a is not app and running(a[1]):
             close(a)
@@ -133,7 +145,7 @@ def show(button, app):
         if any(running(a[1]) for a in APPS if a is not target):
             if GLib.get_monotonic_time() < give_up[0]:
                 return True
-            switching[0] = None
+            switching[0] = opening[0] = None
             return False
         switching[0] = None
         start(target)
@@ -166,6 +178,7 @@ RUNDIR = os.path.join(GLib.get_user_runtime_dir(), 'art-kit')
 REQUEST = os.path.join(RUNDIR, 'request.json')
 KRITA_FILE = os.path.join(RUNDIR, 'krita-file')
 switching = [None]  # the app the dock is switching to
+opening = [None]  # the app that starts now: its button says "Opening…" until its window shows
 last_start = [0]
 deadline = [0]
 
@@ -189,6 +202,8 @@ def mark(buttons):
         on = subprocess.run(['systemctl', '--user', '-q', 'is-active', unit]).returncode == 0
         (b.add_css_class if on else b.remove_css_class)('running')
         (b.add_css_class if on and re.search(wmclass, front) else b.remove_css_class)('front')
+        b.set_label('Opening…' if opening[0] and opening[0][0] == label else label)
+        (b.add_css_class if opening[0] and opening[0][0] == label else b.remove_css_class)('opening')
     return True
 
 

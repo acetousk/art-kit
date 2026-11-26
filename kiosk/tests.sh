@@ -20,6 +20,11 @@ for app in com.sweethome3d.Sweethome3d org.blender.Blender; do
   else printf 'FAIL Flatpak overrides: %s\n' "$app"; failed=1; fi
 done
 check 'Blender on X11 (dock can raise it)' sh -c "flatpak override --show org.blender.Blender | grep -q '!wayland'"
+check 'MIME cache (Krita save dialog)' test -s /usr/share/mime/mime.cache
+check 'Krita 2 GB defaults' grep -q '^AutoSaveInterval=300$' /etc/xdg/kritarc
+check 'Sweet Home 3D Java options' sh -c "flatpak override --show com.sweethome3d.Sweethome3d | grep -q 'Xmx700m'"
+check 'Blender preferences (no Quick Setup)' sh -c "ls /home/$KID/.var/app/org.blender.Blender/config/blender/*/config/userpref.blend >/dev/null 2>&1"
+check 'zram and disk swap' sh -c "swapon --show=NAME --noheadings | grep -q zram && swapon --show=NAME --noheadings | grep -q /var/swapfile"
 check 'Dock window rules' grep -q '^match-class=org.artkit.Dock$' /usr/local/share/gnome-kiosk/window-config.ini
 check 'Dock running' systemctl --user -M "$KID@" -q is-active art-dock.service
 check 'One app running' sh -c "[ \$(systemctl --user -M '$KID@' list-units --state=active --no-legend krita-kiosk.service art-library.service art-sweethome3d.service art-blender.service | wc -l) -eq 1 ]"
