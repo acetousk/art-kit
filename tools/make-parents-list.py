@@ -3,7 +3,7 @@
 import glob, os, re
 TOPICS = ["Drawing", "Painting", "Revoy", "Design", "Lettering", "Interior Design", "3D Drawing"]
 APPS = [("Sweet Home 3D", "Sweet Home 3D"), ("Blender", "Blender"), ("Krita", "Krita")]
-out = ["## Every lesson", "", "Each topic opens to a list: lesson number, title, the app, what your kid makes, and where the lesson comes from.", ""]
+out = ["## Every lesson", "", "Each topic opens to a list: lesson number, title, what your kid learns, the app, time, what your kid makes, and where the lesson comes from.", ""]
 for t in TOPICS:
     rows = []
     for f in sorted(glob.glob(f"lessons/{t}/[0-9]*/README.md")):
@@ -13,11 +13,13 @@ for t in TOPICS:
         read = (re.search(r"^\*\*Read:\*\*\s*(.+)$", s, re.M) or [None, ""])[1].strip()
         make = (re.search(r"^\*\*You make:\*\*\s*(.+?)\s*$", s, re.M) or [None, ""])[1]
         make = os.path.basename(make.split(" (")[0].split(",")[0].replace("~/Art/", ""))
+        idea = (re.search(r"^## The idea\n(.+?)(?<=[.!?])\s", s, re.M | re.S) or [None, ""])[1].replace("\n", " ").strip()
+        time = (re.search(r"^\*\*Time:\*\*\s*(.+?)\s*$", s, re.M) or [None, ""])[1]
         apps = [n for k, n in APPS if k in s.split("## Steps", 1)[-1]] or ["Krita"]
-        rows.append(f"| {num} | {title} | {' + '.join(apps)} | {make} | {read.replace('|', '/')} |")
+        rows.append(f"| {num} | {title} | {idea.replace('|', '/')} | {' + '.join(apps)} | {time} | {make} | {read.replace('|', '/')} |")
     if not rows: continue
     out += [f"<details><summary><b>{t}</b> — {len(rows)} lessons</summary>", "",
-            "| # | Lesson | App | Makes | Source |", "|---|---|---|---|---|"] + rows + ["", "</details>", ""]
+            "| # | Lesson | They learn | App | Time | Makes | Source |", "|---|---|---|---|---|---|---|"] + rows + ["", "</details>", ""]
 p = "PARENTS.md"; s = open(p).read()
 A, B = "<!-- lessons:start -->", "<!-- lessons:end -->"
 block = A + "\n" + "\n".join(out) + B
