@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Art kit pen test</title>
+<style>
+body{margin:0;font:16px sans-serif;background:#fff;touch-action:none}
+#bar{position:fixed;top:0;left:0;right:0;padding:8px;background:#eee;display:flex;gap:16px;flex-wrap:wrap}
+canvas{display:block}
+.t{position:fixed;width:24px;height:24px;border:2px solid red;border-radius:50%;transform:translate(-50%,-50%)}
+.hit{border-color:green;background:#cfc}
+</style></head><body>
+<div id="bar">
+ <b>Pen test</b>
+ <span>Type: <b id="type">-</b></span>
+ <span>Pressure: <b id="p">-</b> (max seen <b id="pmax">0</b>, min seen <b id="pmin">1</b>)</span>
+ <span>Tilt: <b id="tilt">-</b></span>
+ <span>Buttons: <b id="btn">-</b></span>
+ <span>Targets: <b id="hits">0</b>/5</span>
+ <input placeholder="type here to test keys" size="22">
+ <button onclick="ctx.clearRect(0,0,c.width,c.height)">Clear</button>
+</div>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),ctx=c.getContext('2d');
+function size(){c.width=innerWidth;c.height=innerHeight}size();onresize=size;
+const $=id=>document.getElementById(id);let last=null,pmax=0,pmin=1,hits=0;
+const pos=[[.1,.2],[.9,.2],[.5,.55],[.1,.9],[.9,.9]];
+pos.forEach(([x,y])=>{const d=document.createElement('div');d.className='t';d.style.left=x*100+'vw';d.style.top=y*100+'vh';document.body.appendChild(d)});
+function show(e){
+ $('type').textContent=e.pointerType;$('p').textContent=e.pressure.toFixed(2);
+ $('tilt').textContent=e.tiltX+', '+e.tiltY;
+ $('btn').textContent=(e.buttons&32?'eraser ':'')+(e.buttons&2?'side button ':'')+(e.buttons&1?'tip':'');
+ if(e.pointerType==='pen'&&e.buttons){pmax=Math.max(pmax,e.pressure);pmin=Math.min(pmin,e.pressure);$('pmax').textContent=pmax.toFixed(2);$('pmin').textContent=pmin.toFixed(2)}
+}
+c.onpointerdown=e=>{last=e;show(e);
+ document.querySelectorAll('.t:not(.hit)').forEach(t=>{const r=t.getBoundingClientRect();
+  if(Math.hypot(e.clientX-r.x-12,e.clientY-r.y-12)<16){t.classList.add('hit');$('hits').textContent=++hits}})};
+c.onpointermove=e=>{show(e);if(!e.buttons||!last)return;
+ ctx.strokeStyle=e.buttons&32?'#f88':'#000';ctx.lineCap='round';ctx.lineWidth=1+e.pressure*20;
+ ctx.beginPath();ctx.moveTo(last.clientX,last.clientY);ctx.lineTo(e.clientX,e.clientY);ctx.stroke();last=e};
+c.onpointerup=()=>last=null;c.oncontextmenu=e=>e.preventDefault();
+</script></body></html>
