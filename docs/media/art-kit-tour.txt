@@ -1,21 +1,21 @@
-This is art-kit, a safe art computer for your kid.
-When it turns on, your kid is in Krita, drawing a cat with the pen.
-Your kid saves it as my-cat in their own Art folder.
-Next, your kid opens the Library from the dock.
-The Tutorials shelf holds about three hundred real art lessons.
-Today it is Drawing 41, a room at an angle.
-Each lesson gives the idea, short steps, and new words.
-A page from an old book shows how an artist did it.
-When the room is drawn, your kid taps Done.
-Inspire shows a surprise picture from a museum.
-One tap keeps a favorite.
-Another tap opens it in Krita, to study or paint.
-Search finds every lesson about cats.
-In Notes, your kid writes a short note to Mom.
-In Sweet Home 3D, four walls make a room.
-Blender opens, ready for drawing in 3D.
-Back in Krita, the cat is still there.
-You see every file your kid makes, through the backup.
-No internet, no web browser, and one app at a time.
-It runs on a laptop with two gigabytes of memory.
-art-kit is free. Find it on GitHub.
+What if your kid's computer could only do art?
+It turns on straight into Krita. Pick up the pen and draw.
+Every drawing saves to their own Art folder.
+When they get stuck, the Library is one tap away.
+Inside are three hundred lessons, from first lines to full rooms.
+Here is a harder one: a room in two-point perspective.
+Each lesson says what they will make, how long it takes, and what to do first.
+The steps come from real art books, with the original page beside them.
+When they finish, Done marks the lesson.
+Out of ideas? Inspire deals out paintings from museum collections.
+They keep the ones they love.
+Any picture opens in Krita, to copy and learn from.
+Search finds every lesson on a subject, like cats.
+Notes is for ideas, lists, and messages home.
+Sweet Home 3D lets them design a room, wall by wall.
+Blender adds drawing in 3D.
+Switch back, and the drawing is right where they left it.
+And you? You see every file they make, in your own backup folder.
+There is no internet, no web browser, and only one app at a time.
+So it runs well on an old laptop with two gigabytes of memory.
+art-kit is free and open source. Get it on GitHub.

@@ -1,8 +1,8 @@
 # Art Kit
 
-![A 93-second tour: your kid draws in Krita, does a lesson in the Library, and the parent sees every file. The video plays on its own and repeats.](docs/media/art-kit-tour.webp)
+![A 91-second tour: your kid draws in Krita, does a lesson in the Library, and the parent sees every file. The video plays on its own and repeats.](docs/media/art-kit-tour.webp)
 
-This 93-second video plays on its own and repeats. It is a real test run on a 2 GB computer: your kid draws, saves, does a lesson, finds a picture, writes a note, and uses Sweet Home 3D and Blender. You can also [watch it with sound (MP4)](docs/media/art-kit-tour.mp4).
+This 91-second video plays on its own and repeats. It is a real test run on a 2 GB computer: your kid draws, saves, does a lesson, finds a picture, writes a note, and uses Sweet Home 3D and Blender. You can also [watch it with sound (MP4)](docs/media/art-kit-tour.mp4).
 
 Turn a cheap laptop or tablet with a pen into a safe, offline art computer for a kid. It comes with about 300 art lessons and a library of open books and museum images.
 
