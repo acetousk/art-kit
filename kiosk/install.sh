@@ -16,6 +16,23 @@ fi
 # 2. GNOME Kiosk (Wayland, one app) + Krita. No desktop. Wi-Fi for updates and admin.
 dnf install -y --setopt=install_weak_deps=False gnome-kiosk gdm gnome-session \
   xorg-x11-server-Xwayland iio-sensor-proxy krita NetworkManager-wifi linux-firmware nftables
+# Build the MIME cache: without it GTK cannot load icons, and Krita's file dialog aborts (Ctrl+S crash).
+update-mime-database /usr/share/mime
+# Swap for 2 GB RAM: zram first (Fedora default), then a 2 GB swap file on disk as a fallback.
+dnf install -y zram-generator-defaults
+# A line from an earlier run whose file does not start: remove it, make the file again.
+SW='^[[:space:]]*/var/swapfile[[:space:]]'   # an active fstab line (first field), not a comment
+if grep -q "$SW" /etc/fstab && ! swapon --show=NAME | grep -q /var/swapfile && ! swapon /var/swapfile; then
+  sed -i "\|$SW|d" /etc/fstab
+fi
+if ! grep -q "$SW" /etc/fstab; then
+  rm -f /var/swapfile   # a part-made file from an earlier run
+  # All in an "if": under set -e a failed step must not stop the install.
+  if { if [ "$(findmnt -no FSTYPE -T /var)" = btrfs ]; then btrfs filesystem mkswapfile --size 2g /var/swapfile
+       else fallocate -l 2G /var/swapfile && chmod 600 /var/swapfile && mkswap /var/swapfile; fi; } && swapon /var/swapfile; then
+    echo '/var/swapfile none swap defaults,pri=10 0 0' >> /etc/fstab
+  else rm -f /var/swapfile; echo "WARNING: the swap file did not start. Only zram swap is on." >&2; fi
+fi
 systemctl set-default graphical.target
 systemctl enable gdm
 hostnamectl set-hostname "$HOST"
@@ -23,6 +40,7 @@ hostnamectl set-hostname "$HOST"
 # 3. Kid user: no sudo, GDM autologin into the Krita kiosk session.
 id "$KID" >/dev/null 2>&1 || useradd -m "$KID"
 passwd -l "$KID"
+runuser -u "$KID" -- mkdir -p /home/$KID/Art/Drawing   # as the kid: root never writes through a path in her home
 cat > /etc/gdm/custom.conf <<EOF
 [daemon]
 AutomaticLoginEnable=True
@@ -121,6 +139,8 @@ PY_SO=$(rpm -qla 'krita*' | grep -E 'kritapykrita\.so$' | paste -sd:)
 [ -n "$PY_SO" ] || { echo "ERROR: kritapykrita.so not found; check Krita's Python plugin by hand." >&2; exit 1; }
 echo "%_netsharedpath $PY_SO" > /etc/rpm/macros.kiosk
 echo "$PY_SO" | tr : '\n' | xargs rm -f
+# Krita defaults for 2 GB RAM (the kid's own kritarc can change them): smaller new image, autosave every 5 min.
+printf 'imageWidthDef=1920\nimageHeightDef=1200\nimageResolutionDef=150\nundoStackLimit=30\nAutoSaveInterval=300\n' > /etc/xdg/kritarc
 
 # 8. No network for the kid user. Root, Tailscale, and the admin keep network.
 cat > /etc/nftables/kiosk.nft <<EOF
@@ -152,7 +172,11 @@ systemctl enable dnf5-automatic.timer
 su - "$ADMIN" -c 'curl -fsSL https://t3.codes/install.sh | sh'
 
 # 12. Library (read-only for the kid) and the Library app. build-library.sh lists the sources and makes the search index.
-dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown poppler-utils urw-base35-fonts unzip wget xdotool xprop wmctrl
+dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown python3-pillow poppler-utils urw-base35-fonts unzip wget xdotool xprop wmctrl
+# The Library is outside the kid home (root never writes there). ~/Library is a link to it. An old ~/Library folder goes.
+mkdir -p /var/lib/art-kit && chmod 755 /var/lib/art-kit
+[ -L /home/$KID/Library ] || rm -rf /home/$KID/Library
+ln -sfn /var/lib/art-kit/Library /home/$KID/Library
 bash "$(dirname "$0")/../library/build-library.sh" || echo "WARNING: build-library.sh failed. Run it again (it resumes)."
 rm -rf /opt/art-kit/app && mkdir -p /opt/art-kit && cp -r "$(dirname "$0")/../app" /opt/art-kit/app
 
@@ -162,9 +186,16 @@ flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.f
 flatpak install -y --noninteractive flathub com.sweethome3d.Sweethome3d org.blender.Blender
 for app in com.sweethome3d.Sweethome3d org.blender.Blender; do
   flatpak override --system "$app" --unshare=network --nofilesystem=host --nofilesystem=home \
-    --filesystem=/home/$KID/Art --filesystem=/home/$KID/Library:ro
+    --filesystem=/home/$KID/Art --filesystem=/var/lib/art-kit/Library:ro --filesystem=/home/$KID/Library:ro
 done
 flatpak override --system org.blender.Blender --nosocket=wayland --socket=x11   # X11: the dock can raise it
+# Sweet Home 3D: smaller Java heap, no OpenGL for 2D (OpenGL left black, frozen areas on weak GPUs).
+flatpak override --system com.sweethome3d.Sweethome3d --env=_JAVA_OPTIONS="-Xmx700m -XX:+UseSerialGC -Dsun.java2d.opengl=false"
+# Blender: save the kid's preferences once (not on a rerun), so no Quick Setup or splash. Emulate 3 Button Mouse for a pen.
+BV=$(LC_ALL=C flatpak info org.blender.Blender | awk '$1 == "Version:" { split($2, v, "."); print v[1] "." v[2] }')   # e.g. 4.5
+[ -f /home/$KID/.var/app/org.blender.Blender/config/blender/$BV/config/userpref.blend ] ||
+(cd / && runuser -u "$KID" -- flatpak run org.blender.Blender -b --factory-startup --python-expr \
+  "import bpy; p = bpy.context.preferences; p.view.show_splash = False; p.inputs.use_mouse_emulate_3_button = True; bpy.ops.wm.save_userpref()")
 
 # 14. Dock at the bottom edge: Krita, Sweet Home 3D, Blender, Library, battery, backup state.
 #     The window rules need gnome-kiosk 51 or newer (Fedora 45+). MONITOR = the screen name, for example eDP-1.
@@ -184,7 +215,7 @@ echo "Done. Manual steps left: see the comment block at the end of this file."
 # b. GRUB password (blocks boot-entry edits; normal boot needs no password):  grub2-setpassword
 #    Keep Fedora's hidden menu. Hold Shift or Esc at boot to pick the old kernel for rollback.
 # c. Secure Boot: reboot, enroll the linux-surface MOK key (password: surface), then turn Secure Boot on.
-# d. UEFI: leave unlocked (no password, USB boot stays on).
+# d. UEFI: set a password, turn off boot from USB (a USB system has no kiosk and no firewall).
 # e. Tailscale:  tailscale up --ssh   (open the printed link, sign in, then turn off key expiry
 #    for this device in the Tailscale admin console).
 # f. T3 Code:  sudo -iu $ADMIN t3 up   (open the printed sign-in link). Then add this machine in

@@ -17,8 +17,9 @@
 #   Backup      = /home/$KID (except Library: install.sh downloads it again) + /home/$KID/.kiosk-etc/etc.tar.gz.
 #                 $ADMIN reads the kid home through ACLs (read only). Make parents Readers in the Tresorit app.
 #   From Family = synced to /home/$ADMIN/From Family. Root copies only .png .jpg .jpeg .pdf .txt
-#                 to /home/$KID/Library/From Family (root:$KID, mode 750/640: the kid reads, cannot write).
-#   /run/art-kit/backup-state = "ok <ISO-time>" or "fail <ISO-time> <reason>" for the dock (every 15 min).
+#                 to /var/lib/art-kit/Library/From Family (root:$KID, mode 750/640: the kid reads, cannot write).
+#                 It is outside the kid home (~/Library is a link to it), so root never writes through her paths.
+#   /run/art-kit/backup-state = "ok|sync|fail <ISO-time> [reason]" for the dock (every 15 min). sync = transfers still listed.
 set -eu
 . "$(dirname "$0")/../kit.conf"   # KID, ADMIN, TRESORIT_EMAIL
 
@@ -44,12 +45,26 @@ H=/home/$KID
 E=\$H/.kiosk-etc
 if [ "\${1:-}" = nightly ]; then
   # \$ADMIN reads the kid home. Files saved with mode 600 get the ACL here (setfacl also fixes the mask).
-  find "\$H" -path "\$H/Library" -prune -o -exec setfacl -m u:$ADMIN:rX {} +
-  find "\$H" -path "\$H/Library" -prune -o -type d -exec setfacl -m d:u:$ADMIN:rX {} +
-  # /etc without password hashes. The kid cannot read it. tar exit 1 = a file changed while read (OK).
-  install -d -o root -g $ADMIN -m 750 "\$E"
-  tar -C / --exclude='etc/shadow*' --exclude='etc/gshadow*' -czf "\$E/etc.tmp" etc || [ \$? -eq 1 ]
-  chgrp $ADMIN "\$E/etc.tmp" && chmod 640 "\$E/etc.tmp" && mv -f "\$E/etc.tmp" "\$E/etc.tar.gz"
+  # As the kid: she can change only her own files, so a link she makes cannot point root at other files.
+  cd /   # the kid's find must be able to enter its start folder
+  runuser -u $KID -- find "\$H" -path "\$H/Library" -prune -o ! -type l -exec setfacl -m u:$ADMIN:rX {} + 2>/dev/null
+  runuser -u $KID -- find "\$H" -path "\$H/Library" -prune -o -type d -exec setfacl -m d:u:$ADMIN:rX {} + 2>/dev/null
+  # Only the kiosk config that install.sh and these scripts write. No keys, Wi-Fi, or password files.
+  # The kid cannot read it. tar exit 1 = a file changed while read (OK). A missing file is skipped.
+  C="etc/gdm/custom.conf etc/systemd/user etc/dconf/db/local.d etc/dconf/profile/user etc/sysctl.d/90-kiosk.conf
+     etc/systemd/logind.conf.d/kiosk.conf etc/modprobe.d/kiosk-usb.conf etc/rpm/macros.kiosk etc/xdg/kritarc
+     etc/nftables/kiosk.nft etc/sysconfig/nftables.conf etc/dnf/automatic.conf etc/fstab etc/systemd/system/tresorit.service
+     etc/systemd/system/art-kit-backup.service etc/systemd/system/art-kit-backup.timer etc/systemd/system/art-kit-daily.service
+     etc/systemd/system/art-kit-backup-nightly.service etc/systemd/system/art-kit-backup-nightly.timer etc/systemd/system/art-kit-daily.timer
+     usr/local/share/gnome-kiosk/window-config.ini var/lib/AccountsService/users/$KID"
+  rm -f "\$E" 2>/dev/null   # a link the kid made (a real folder stays)
+  mkdir -m 750 "\$E" 2>/dev/null
+  # Work inside the folder (cd holds it): a link or a rename by the kid cannot move root's writes.
+  cd "\$E" && [ "\$(pwd -P)" = "\$E" ] && [ "\$(stat -c %u .)" = 0 ] || { echo "\$E: not root's folder" >&2; exit 1; }
+  chgrp $ADMIN . && chmod 750 .
+  if tar -C / --ignore-failed-read -czf etc.tmp \$C || [ \$? -eq 1 ]; then
+    chgrp $ADMIN etc.tmp && chmod 640 etc.tmp && mv -f etc.tmp etc.tar.gz   # only a good copy replaces the last one
+  else rm -f etc.tmp; exit 1; fi
   exit 0
 fi
 # From Family: only Library file types. Root-owned, the kid reads only.
@@ -58,28 +73,30 @@ if [ -d "\$F" ]; then
   rsync -rt --delete --delete-excluded --prune-empty-dirs \\
     --exclude='.*' --include='*/' --include='*.[pP][nN][gG]' --include='*.[jJ][pP][gG]' \\
     --include='*.[jJ][pP][eE][gG]' --include='*.[pP][dD][fF]' --include='*.[tT][xX][tT]' --exclude='*' \\
-    "\$F/" "\$H/Library/From Family/"
-  chown -R root:$KID "\$H/Library/From Family" && chmod -R u=rwX,g=rX,o= "\$H/Library/From Family"
+    "\$F/" "/var/lib/art-kit/Library/From Family/"
+  chown -R root:$KID "/var/lib/art-kit/Library/From Family" && chmod -R u=rwX,g=rX,o= "/var/lib/art-kit/Library/From Family"
 fi
 # State for the dock. TODO: also parse "transfers --porcelain" errors (columns are not documented).
-R=
+R= T=
 systemctl -q is-active tresorit.service || R="sync service stopped"
-[ -n "\$R" ] || runuser -u $ADMIN -- $CLI transfers --tresor Backup --porcelain >/dev/null 2>&1 || R="tresorit-cli error"
+[ -n "\$R" ] || T=\$(runuser -u $ADMIN -- $CLI transfers --tresor Backup --porcelain 2>/dev/null) || R="tresorit-cli error"
 [ -n "\$R" ] || [ -n "\$(find "\$E/etc.tar.gz" -mmin -2880 2>/dev/null)" ] || R="etc copy older than 2 days"
 install -d -m 755 /run/art-kit
-if [ -z "\$R" ]; then echo "ok \$(date -Is)"; else echo "fail \$(date -Is) \$R"; fi > /run/art-kit/backup-state.tmp
+if [ -z "\$R" ] && [ -n "\$T" ]; then echo "sync \$(date -Is)"   # files still go up: not "Backed up" yet
+elif [ -z "\$R" ]; then echo "ok \$(date -Is)"; else echo "fail \$(date -Is) \$R"; fi > /run/art-kit/backup-state.tmp
 chmod 644 /run/art-kit/backup-state.tmp && mv -f /run/art-kit/backup-state.tmp /run/art-kit/backup-state
 EOF
 chmod 755 /usr/local/sbin/art-kit-backup
-/usr/local/sbin/art-kit-backup nightly   # first ACLs and /etc copy
 
 # 4. Sync folders. Backup must not upload the Library (3.2 GB; it also holds From Family).
 # TODO: check on the device that Tresorit uses a .tresorit folder we make before "sync --start".
-install -d -o "$ADMIN" -m 700 "/home/$KID/.tresorit" "/home/$KID/.tresorit/Filters"
-printf '[Ignore] Library\n' > "/home/$KID/.tresorit/Filters/local.filter"
-chown "$ADMIN" "/home/$KID/.tresorit/Filters/local.filter"
+# ~/Library is only a link now; the filter is in case Tresorit follows links. Like .kiosk-etc: no kid link, work inside.
+T=/home/$KID/.tresorit
+if [ -L "$T" ]; then rm -f "$T"; fi
+mkdir -p -m 700 "$T" && cd "$T" && [ "$(pwd -P)" = "$T" ] && [ "$(stat -c %U .)" != "$KID" ] || { echo "$T: the kid's folder" >&2; exit 1; }
+install -d -o "$ADMIN" -m 700 Filters && printf '[Ignore] Library\n' > Filters/local.filter && chown "$ADMIN" . Filters/local.filter && cd /
 install -d -o "$ADMIN" -m 700 "/home/$ADMIN/From Family"
-install -d -o root -g "$KID" -m 750 "/home/$KID/Library/From Family"
+install -d -o root -g "$KID" -m 750 "/var/lib/art-kit/Library/From Family"
 
 # 5. systemd units. The CLI doc: start tresorit-daemon with no arguments from an init script.
 # TODO: check that tresorit-daemon stays in the foreground (Type=simple). If it forks, use Type=forking.
@@ -136,6 +153,7 @@ Persistent=true
 WantedBy=timers.target
 EOF
 systemctl daemon-reload
+/usr/local/sbin/art-kit-backup nightly   # first ACLs and /etc copy (after the units: they are in it)
 systemctl enable --now tresorit.service
 
 # 6. Login. The password goes from stdin to the CLI through a pipe (printf is a shell builtin: not in ps).

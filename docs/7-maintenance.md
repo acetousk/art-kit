@@ -75,12 +75,12 @@ Only add open content: public domain, CC0, CC BY, CC BY-SA, or GNU FDL. See [REA
 
 1. In the repo, put the lesson folder in `lessons/<Topic>/`. Name it `NNN Title`.
 2. Check the quotes: `python3 tools/check-quotes.py lessons`.
-3. Run `sudo bash library/build-library.sh` to copy lessons into `/home/$KID/Library/Tutorials/`.
+3. Run `sudo bash library/build-library.sh` to copy lessons into `/var/lib/art-kit/Library/Tutorials/`.
 4. The script makes Library read-only:
 
 ```sh
-sudo chown -R root:root /home/$KID/Library
-sudo chmod -R a+rX,go-w /home/$KID/Library
+sudo chown -R root:root /var/lib/art-kit/Library
+sudo chmod -R a+rX,go-w /var/lib/art-kit/Library
 ```
 
 **You should see:** the new lesson in the Library.

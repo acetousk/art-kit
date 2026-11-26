@@ -34,8 +34,8 @@ loads, dev tools, the right-click menu, downloads, and new windows.
 1. Install the packages: `sudo dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown poppler-utils`
 2. Copy the app: `sudo mkdir -p /opt/art-kit && sudo cp -r app /opt/art-kit/`
 3. Install the launcher: `sudo cp /opt/art-kit/app/library.desktop /usr/share/applications/`
-4. After each library update, build the search index: `sudo python3 /opt/art-kit/app/make-index.py --root /home/$KID`
-5. Make the index readable: `sudo chmod a+r /home/$KID/Library/index.sqlite`
+4. After each library update, build the search index: `sudo python3 /opt/art-kit/app/make-index.py --root /var/lib/art-kit`
+5. Make the index readable: `sudo chmod a+r /var/lib/art-kit/Library/index.sqlite`
 
 When you add lessons that cite a new book, run `python3 make-books-map.py`. Fix every UNRESOLVED line.
 

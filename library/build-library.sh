@@ -1,7 +1,7 @@
 #!/bin/bash
 # Build the kid's read-only Library. Run as root on the device: sudo bash library/build-library.sh
 # Safe to run again: it skips files that exist and resumes cut downloads.
-# Env: LIB_ROOT=<dir> (default /home/$KID/Library)  CACHE=<dir> (default /var/cache/art-kit)
+# Env: LIB_ROOT=<dir> (default /var/lib/art-kit/Library; ~/Library links to it)  CACHE=<dir> (default /var/cache/art-kit)
 #      DRY=1 (print actions only)  ONLY=<regex> (use only list lines that match, for tests)
 #      BLENDER_SRC=<dir> (Blender manual source, default /tmp/books/blender-manual)
 set -u
@@ -9,7 +9,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 KIT="$(dirname "$HERE")"
 # shellcheck source=/dev/null
 . "$KIT/kit.conf"
-LIB_ROOT="${LIB_ROOT:-/home/$KID/Library}"
+LIB_ROOT="${LIB_ROOT:-/var/lib/art-kit/Library}"
 CACHE="${CACHE:-/var/cache/art-kit}"
 DRY="${DRY:-}"
 ONLY="${ONLY:-.}"
