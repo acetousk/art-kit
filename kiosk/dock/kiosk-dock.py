@@ -3,7 +3,7 @@
 Buttons: Krita, Sweet Home 3D, Blender, Library. Right side: battery and backup state.
 A tap starts the app if it does not run (as a systemd user unit: 70-daily.sh counts unit time), then raises it.
 """
-import datetime, subprocess
+import datetime, json, os, subprocess
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Gdk', '4.0')
@@ -142,6 +142,29 @@ def show(button, app):
 
 
 give_up = [0]
+def on_request(monitor, f, other, event):
+    """The Library asks: open a file in Krita (one app at a time, so the dock does it)."""
+    if event not in (Gio.FileMonitorEvent.CREATED, Gio.FileMonitorEvent.CHANGES_DONE_HINT,
+                     Gio.FileMonitorEvent.MOVED_IN, Gio.FileMonitorEvent.RENAMED) or not os.path.exists(REQUEST):
+        return
+    try:
+        req = json.load(open(REQUEST))
+    except (OSError, ValueError):
+        return
+    os.remove(REQUEST)
+    krita = APPS[0]
+    if running(krita[1]):
+        subprocess.Popen(['krita', req['file']], env=dict(os.environ, QT_QPA_PLATFORM='xcb'))  # goes to the open Krita
+        raise_app(krita[2])
+    else:
+        with open(KRITA_FILE, 'w') as fh:  # krita-open (the service) opens it
+            fh.write(req['file'])
+        show(None, krita)
+
+
+RUNDIR = os.path.join(GLib.get_user_runtime_dir(), 'art-kit')
+REQUEST = os.path.join(RUNDIR, 'request.json')
+KRITA_FILE = os.path.join(RUNDIR, 'krita-file')
 switching = [None]  # the app the dock is switching to
 last_start = [0]
 deadline = [0]
@@ -230,6 +253,11 @@ def on_activate(app):
     update()
     GLib.timeout_add_seconds(60, update)
     GLib.timeout_add_seconds(2, mark, buttons)  # apps can also close or come to front on their own
+
+    os.makedirs(RUNDIR, exist_ok=True)
+    monitor = Gio.File.new_for_path(RUNDIR).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, None)
+    monitor.connect('changed', on_request)
+    app.monitor = monitor  # keep it alive
 
     win = Gtk.ApplicationWindow(application=app, title='Dock', decorated=False, resizable=False)
     mon = win.get_display().get_monitors().get_item(0)

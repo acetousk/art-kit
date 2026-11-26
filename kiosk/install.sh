@@ -61,7 +61,7 @@ After=gnome-session.target
 
 [Service]
 Environment=QT_QPA_PLATFORM=xcb
-ExecStart=/usr/bin/krita
+ExecStart=/opt/art-kit/dock/krita-open
 Restart=on-failure
 RestartSec=1
 EOF
@@ -169,6 +169,7 @@ flatpak override --system org.blender.Blender --nosocket=wayland --socket=x11   
 # 14. Dock at the bottom edge: Krita, Sweet Home 3D, Blender, Library, battery, backup state.
 #     The window rules need gnome-kiosk 51 or newer (Fedora 45+). MONITOR = the screen name, for example eDP-1.
 install -D -m 755 "$(dirname "$0")/dock/kiosk-dock.py" /opt/art-kit/dock/kiosk-dock.py
+install -D -m 755 "$(dirname "$0")/dock/krita-open" /opt/art-kit/dock/krita-open
 MON=$(grep -l '^connected' /sys/class/drm/card*-*/status | head -n 1 | cut -d/ -f5 | cut -d- -f2-)
 mkdir -p /usr/local/share/gnome-kiosk
 sed "s/MONITOR/$MON/" "$(dirname "$0")/dock/window-config.ini" > /usr/local/share/gnome-kiosk/window-config.ini

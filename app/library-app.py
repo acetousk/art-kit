@@ -3,7 +3,7 @@
 All content comes from library:// (see library.py). No web server, no ports.
 Usage: library-app.py [--root DIR]   (DIR holds Library/ and Art/; default: your home)
 """
-import argparse, os, sys
+import argparse, json, os, sys
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('WebKit', '6.0')
@@ -18,7 +18,15 @@ CSP = ("default-src library:; style-src library: 'unsafe-inline'; img-src librar
        "form-action 'none'; frame-src 'none'; object-src 'none'")
 
 
-def launch(argv):  # non-blocking, the app does not wait for Krita
+def launch(argv):
+    """Open in Krita: ask the dock (one app at a time). It closes the Library and opens the file in Krita."""
+    if argv[0] == 'krita':
+        d = os.path.join(GLib.get_user_runtime_dir(), 'art-kit')
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, 'request.tmp'), 'w') as f:
+            json.dump({'app': 'Krita', 'file': argv[1]}, f)
+        os.replace(os.path.join(d, 'request.tmp'), os.path.join(d, 'request.json'))
+        return
     Gio.Subprocess.new(argv, Gio.SubprocessFlags.NONE)
 
 
