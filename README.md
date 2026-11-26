@@ -18,6 +18,8 @@ When the device turns on, the kid is in Krita. A dock at the bottom switches bet
 | **Setup adult** | [kiosk/install.sh](kiosk/install.sh) with [kit.conf](kit.conf): the install (guide `docs/2`–`docs/3` to come) |
 | **Setup adult + parent** | [docs/5-backup-and-share.md](docs/5-backup-and-share.md): backup, and using Tresorit to talk about the art |
 | **Lesson writers** | [lessons/RULES.md](lessons/RULES.md) and [lessons/COURSE.md](lessons/COURSE.md) |
+| **Parent, teacher, or older kid** | [write-lesson skill](.claude/skills/write-lesson/SKILL.md): write your own lesson with Claude |
+| **Family or teacher who forks** | [fork-kit skill](.claude/skills/fork-kit/SKILL.md): make the kit your own |
 | **Everyone** | [PLAN.md](PLAN.md): the full plan, the repo layout, and what is left to build |
 
 ## What is in this repo
