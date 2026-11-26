@@ -4,6 +4,51 @@
 
 This 91-second video plays on its own and repeats. It is a real test run on a 2 GB computer: your kid draws, saves, does a lesson, finds a picture, writes a note, and uses Sweet Home 3D and Blender. You can also [watch it with sound (MP4)](docs/media/art-kit-tour.mp4).
 
+## Try it
+
+Art Kit includes about 300 lessons, books, museum pictures and notes, plus Krita, Sweet Home 3D and Blender: one free download of about 1 GB.
+
+| Platform | Download |
+|---|---|
+| Windows 10/11 | [`ArtKit-Setup-<version>.exe`](https://github.com/acetousk/art-kit/releases/latest) |
+| Mac with Apple chip (M1 or newer), macOS 13 or newer | [`ArtKit-<version>-arm64.dmg`](https://github.com/acetousk/art-kit/releases/latest) |
+| Mac with Intel chip, macOS 13 or newer | [`ArtKit-<version>-x64.dmg`](https://github.com/acetousk/art-kit/releases/latest) |
+| Linux (x86_64) | [`ArtKit-<version>-x86_64.tar.gz`](https://github.com/acetousk/art-kit/releases/latest) |
+
+**Windows**
+
+1. Download the `.exe` file. Double-click it to start the installer.
+2. On the blue "Windows protected your PC" screen, click **More info**.
+3. Click **Run anyway**. The app is not signed.
+4. Open Art Kit from the Start menu.
+
+**Mac**
+
+1. Download the file for your chip. To find your chip, open the Apple menu and choose **About This Mac**.
+2. Open the DMG. Drag the **Art Kit** folder to **Applications**.
+3. The first time, right-click (or Control-click) **Art Kit** and choose **Open**. Click **Open** again.
+4. If macOS still blocks it, open **System Settings → Privacy & Security** and click **Open Anyway**.
+
+The Art Kit launcher is not signed. Krita, Blender and Sweet Home 3D are signed by their makers.
+
+**Linux**
+
+1. Download the `.tar.gz` file and extract it.
+2. In the extracted folder, run `./install.sh`. Do not use root. It installs to `~/.local/opt/art-kit` and adds menu entries.
+3. Open Art Kit from the app menu.
+
+**After install**
+
+Art Kit downloads the books and pictures by itself and shows the progress. This is about 1.5 GB to download and 3 GB on disk. Tap **Use lessons now** to start while it downloads. If it stops, it continues at the next start.
+
+**Updates**
+
+Art Kit checks once a day for a new version. If one is ready, it shows a banner with a download link. It never installs by itself. To turn off the check, open Settings.
+
+This is the try-it version for any computer. For the locked-down offline kiosk on a kid's own device, see [docs/1](docs/1-get-a-device.md).
+
+Krita, Blender and Sweet Home 3D are free software (GPL) by their own teams. See [THIRD-PARTY.md](THIRD-PARTY.md).
+
 Turn a cheap laptop or tablet with a pen into a safe, offline art computer for a kid. It comes with about 300 art lessons and a library of open books and museum images.
 
 When the device turns on, the kid is in Krita. A dock at the bottom switches between **Krita · Sweet Home 3D · Blender · Library**. There is no web browser, no app store, no settings, and the kid's account has no network.

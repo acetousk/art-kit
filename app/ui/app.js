@@ -91,6 +91,10 @@ document.addEventListener('click', e => {  // a drag is not a tap: drop only the
   if (Date.now() - dragEnd < 300) { dragEnd = 0; e.stopPropagation(); e.preventDefault(); }
 }, true);
 $('#back').addEventListener('click', back);
+if (BASE !== 'library://') document.addEventListener('click', e => {  // desktop: other sites open in the browser, never in Art Kit
+  const a = e.target.closest && e.target.closest('a[href]');
+  if (a && new URL(a.href, location.href).origin !== location.origin) { e.preventDefault(); api('link', {url: a.href}); }
+});
 document.addEventListener('keydown', e => { if (e.key === 'Escape') back(); });
 const setTitle = t => { $('#title').textContent = t; };
 const room = r => { document.body.dataset.room = r; };  // wall, home, desk (lesson), gallery (pictures)
@@ -113,6 +117,66 @@ function home() {
   d.querySelector('.smallrow').append(button('From Family', () => go(family), 'leather'), button('Notes', () => go(note), 'leather note'));
   main.append(d);
   api('collections').then(c => { if (c[0] && c[0].cover) d.querySelector('.gilt img').src = c[0].cover; });
+  if (BASE !== 'library://') desktop(d.firstChild);  // the kiosk has its dock, no downloads, and no update check
+}
+
+// ---------- desktop app only (desktop.py): update banner, app row, books download, update switch ----------
+async function desktop(d) {
+  const k = await fetch(BASE + 'api/desktop').then(r => r.ok ? r.json() : null, () => null);
+  if (!k || !d.isConnected) return;
+  if (k.update) {
+    const b = el(`<div class="banner">Version ${esc(k.update.version)} is ready. </div>`).firstChild;
+    b.append(button('Download', () => api('open')));
+    d.prepend(b);
+  }
+  const apps = document.createElement('div');
+  apps.className = 'apps';
+  for (const name of Object.keys(k.apps)) {
+    const b = button(name, async () => { if ((await api('app', {name})).ok) toast(`Opening ${name}…`); });
+    b.disabled = !k.apps[name];
+    apps.append(b);
+  }
+  d.append(apps);
+  if (!k.library.complete) {  // the download starts by itself; the first start shows it full screen
+    if (k.library.first && !introSeen) { introSeen = true; return go(getting, true); }
+    const g = el('<div class="getlib"><progress max="100" value="0"></progress><span></span></div>').firstChild;
+    d.append(g);
+    watch(g, j => {
+      if (j.complete) return g.remove();
+      g.querySelector('progress').hidden = !j.running;
+      g.querySelector('span').textContent = j.running ? `Getting the books and pictures: ${percent(j)}%` :
+        'Some books and pictures did not download. They download at the next start.';
+      if (!j.running && j.failed.length && !g.querySelector('button')) g.append(button('Try again', () => api('getlib').then(() => go(home, true))));
+    });
+  }
+  const set = el(`<label class="setting"><input type="checkbox"${k.updates ? ' checked' : ''}> Check for updates</label>`).firstChild;
+  set.querySelector('input').addEventListener('change', e =>
+    api('updates', {on: e.target.checked ? 1 : 0}).then(() => e.target.checked || d.querySelector('.banner')?.remove()));
+  d.append(set);
+}
+
+let introSeen = false;
+const percent = j => j.complete ? 100 : Math.min(99, Math.floor(100 * j.mb / j.total_mb));
+async function watch(node, show) {  // the download runs in desktop.py; this shows how far it is, each second
+  const j = (await api('desktop')).library;
+  if (!node.isConnected) return;
+  node.querySelector('progress').value = percent(j);
+  show(j);
+  if (j.running) setTimeout(() => watch(node, show), 1000);
+}
+
+function getting() {  // first start: the download screen
+  setTitle('Art Kit'); room('home');
+  const d = el(`<div class="getting"><h2>Getting your books and pictures</h2><progress max="100" value="0"></progress>
+    <p class="big"></p><p class="item"></p>
+    <p>You can use Art Kit now. If you close it, the download goes on at the next start.</p></div>`).firstChild;
+  d.append(button('Use lessons now ›', () => go(home, true), 'primary'));
+  main.append(d);
+  watch(d, j => {
+    d.querySelector('.big').textContent = j.complete ? 'Done: all books and pictures are here.' :
+      `${percent(j)}%  ·  ${j.mb} MB of about ${(j.total_mb / 1000).toFixed(1)} GB`;
+    d.querySelector('.item').textContent = j.running ? j.text : j.failed.length ? 'Some files did not download. They download at the next start.' : '';
+  });
 }
 
 // ---------- tutorials ----------

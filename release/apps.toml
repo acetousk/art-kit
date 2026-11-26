@@ -1,0 +1,35 @@
+# The upstream apps in the desktop bundles: official builds, pinned. build.py checks each SHA-256 before it packs a build.
+# New version: change url and sha256 (sha256sum <file>), then update THIRD-PARTY.md.
+# Blender files come from ftp.nluug.nl, an official Blender mirror (download.blender.org blocks scripts).
+
+[linux-x64]
+krita = { url = "https://download.kde.org/stable/krita/6.0.5/krita-6.0.5-x86_64.AppImage", sha256 = "e269c691f1968878f647d8e5f9a9289953a33a7652cc8b972c81867582618cbb" }
+blender = { url = "https://ftp.nluug.nl/pub/graphics/blender/release/Blender5.3/blender-5.3.0-linux-x64.tar.xz", sha256 = "dacb8264197a3f7fda6001285a5a506fc97ee943881261c2c3bd63c882f22e05" }
+# Sweet Home 3D 7.6.1 has no Linux build: 7.5 is the newest with Java inside for Linux.
+sweethome3d = { url = "https://downloads.sourceforge.net/project/sweethome3d/SweetHome3D/SweetHome3D-7.5/SweetHome3D-7.5-linux-x64.tgz", sha256 = "53487eed09650d5cd4310733e3ec80434633ed9df372793acd6fab2c319c2322" }
+appimage-runtime = { url = "https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64", sha256 = "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d" }
+appimagetool = { url = "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage", sha256 = "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0" }
+
+[windows-x64]
+krita = { url = "https://download.kde.org/stable/krita/6.0.5/krita-x64-6.0.5.zip", sha256 = "94e980e55a3841e4b5222e283bbaa604ebb44df94aef6eceb069642e0994b484" }
+blender = { url = "https://ftp.nluug.nl/pub/graphics/blender/release/Blender5.3/blender-5.3.0-windows-x64.zip", sha256 = "3ac567a63d59d9934f7b9213bfb27ba05760e1fb366f8f55c381573ec3eabfa8" }
+sweethome3d = { url = "https://downloads.sourceforge.net/project/sweethome3d/SweetHome3D/SweetHome3D-7.6.1/SweetHome3D-7.6.1-windows.exe", sha256 = "fd4656e78956fdc4c3afd16bee122a529910bc1134f6bb8bea11651b49a3496e" }
+
+[macos-arm64]
+krita = { url = "https://download.kde.org/stable/krita/6.0.5/krita-6.0.5-signed.dmg", sha256 = "5876ffb254b7f3b08fb7ce2849894dfe2e90d91c3fbf0ce499f76bc4396b97c6" }
+blender = { url = "https://ftp.nluug.nl/pub/graphics/blender/release/Blender5.3/blender-5.3.0-macos-arm64.dmg", sha256 = "2d802b54766741e612cead50b03ebbc8eb64dadc71eda932573d256b8a784720" }
+sweethome3d = { url = "https://downloads.sourceforge.net/project/sweethome3d/SweetHome3D/SweetHome3D-7.6.1/SweetHome3D-7.6.1-macosx.dmg", sha256 = "5aa8cd3140342f825a00c0b202e75e5d34bd888c6dec05b7c00c7a13e27e4442" }
+
+[macos-x64]
+krita = { url = "https://download.kde.org/stable/krita/6.0.5/krita-6.0.5-signed.dmg", sha256 = "5876ffb254b7f3b08fb7ce2849894dfe2e90d91c3fbf0ce499f76bc4396b97c6" }
+# Blender 5 has no Intel Mac build: 4.5 LTS is the last one.
+blender = { url = "https://ftp.nluug.nl/pub/graphics/blender/release/Blender4.5/blender-4.5.17-macos-x64.dmg", sha256 = "52aacbe2adcde47d49634e48ae8097eab740a5522fb2c5ab76721753cb92cbba" }
+sweethome3d = { url = "https://downloads.sourceforge.net/project/sweethome3d/SweetHome3D/SweetHome3D-7.6.1/SweetHome3D-7.6.1-macosx.dmg", sha256 = "5aa8cd3140342f825a00c0b202e75e5d34bd888c6dec05b7c00c7a13e27e4442" }
+
+# GPL: the release attaches the exact source of each app version above.
+[source]
+krita = { url = "https://download.kde.org/stable/krita/6.0.5/krita-6.0.5.tar.xz", sha256 = "9bbc971627369abe2d945a5698e3634cc05ddadb72aeee0d1ee208d1e743a01c" }
+blender = { url = "https://ftp.nluug.nl/pub/graphics/blender/source/blender-5.3.0.tar.xz", sha256 = "a8faedaef3e8bcf1465ec3f672733b94854ff75b8c1755dcf43424af8bcacab2" }
+blender-mac-x64 = { url = "https://ftp.nluug.nl/pub/graphics/blender/source/blender-4.5.17.tar.xz", sha256 = "05ce0568b7a9d0d21b9a67ed877f2f8f3a6fa8fa7d97cd64ca462069e5872722" }
+sweethome3d = { url = "https://downloads.sourceforge.net/project/sweethome3d/SweetHome3D-source/SweetHome3D-7.6.1-src/SweetHome3D-7.6.1-src.zip", sha256 = "b82de76095b2b07fcab59637dc16bd8cd1c92e6208ed18b5e37a5d2a304beee6" }
+sweethome3d-linux = { url = "https://downloads.sourceforge.net/project/sweethome3d/SweetHome3D-source/SweetHome3D-7.5-src/SweetHome3D-7.5-src.zip", sha256 = "735ce7c7b7291873432397b97ac341ef60499c1a47a108d64212c1ab91712c6d" }
