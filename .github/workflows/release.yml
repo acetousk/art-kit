@@ -39,7 +39,9 @@ jobs:
         run: python release/build.py app
       - name: Smoke test (Linux, headless)
         if: runner.os == 'Linux'
-        run: build/pyi/artkit/artkit --selftest
+        run: |
+          sudo apt-get install -yq libegl1 libgl1 libxkbcommon0  # on every Linux desktop; not on the bare runner
+          build/pyi/artkit/artkit --selftest
       - name: Smoke test (Mac, headless)
         if: runner.os == 'macOS'
         run: '"build/pyi/Art Kit.app/Contents/MacOS/Art Kit" --selftest'
