@@ -1,0 +1,179 @@
+# Test the release downloads like a user: download, install, open Art Kit and its three apps, screenshot each, --selftest.
+# By hand (Actions → Release smoke test → Run workflow), or called by the Release workflow after its upload.
+# Screenshots and logs: artifact smoke-<platform> (tools/smoke-fetch.sh gets them all).
+name: Release smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (empty: v + app/VERSION)'
+        required: false
+  workflow_call:  # the Release workflow runs this after its upload
+    inputs:
+      tag:
+        type: string
+        required: false
+
+permissions:
+  contents: write  # a draft release is visible only with write access
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: windows-latest, name: windows, file: 'ArtKit-Setup-*.exe'}
+          - {os: macos-15, name: mac-arm64, file: 'ArtKit-*-arm64.dmg'}
+          - {os: macos-15-intel, name: mac-x64, file: 'ArtKit-*-x64.dmg'}
+          - {os: ubuntu-24.04, name: linux, file: 'ArtKit-*-x86_64.tar.gz'}
+    runs-on: ${{ matrix.os }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      ART_KIT_NO_DOWNLOAD: '1'  # no 3 GB books download
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Download
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          mkdir smoke
+          gh release download "${TAG:-v$(cat app/VERSION)}" --pattern '${{ matrix.file }}' --dir dl
+          ls -l dl
+      - name: Screen tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq xvfb xdotool imagemagick libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libegl1 libgl1 libopengl0 libgl1-mesa-dri libxi6 libxxf86vm1 libxtst6 libsm6
+
+      - name: Install, open, screenshot (Linux, Mac)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ] && [ -z "$DISPLAY" ]; then exec xvfb-run -a -s '-screen 0 1920x1080x24' bash -e "$0"; fi
+          set -o pipefail
+          export ART_KIT_URL_FILE="$PWD/smoke/url.txt"
+          names=(Krita Blender 'Sweet Home 3D'); fail=
+          if [ "$RUNNER_OS" = Linux ]; then
+            tar -xzf dl/ArtKit-*.tar.gz -C dl
+            (cd dl/ArtKit-*/ && ./install.sh) 2>&1 | tee smoke/install.log  # as the runner user, not root
+            A=~/.local/opt/art-kit; export ART_KIT_APPS="$A"; ART="$A/ArtKit/AppRun"  # the menu entry's command
+            dirs=(Krita Blender SweetHome3D)
+            ls ~/.local/share/applications/art-kit*.desktop | tee -a smoke/install.log
+            shot() { import -window root "smoke/$1.png"; }
+            win() { xdotool search --onlyvisible --name "$1" >/dev/null 2>&1; }
+          else
+            hdiutil attach -nobrowse -readonly -mountpoint /tmp/ak dl/ArtKit-*.dmg
+            cp -R "/tmp/ak/Art Kit" /Applications/  # what a user drags; no quarantine is removed
+            hdiutil detach /tmp/ak
+            A="/Applications/Art Kit"; ART="$A/Art Kit.app/Contents/MacOS/Art Kit"
+            dirs=(krita blender 'sweet home 3d')
+            spctl -a -vv -t exec "$A/Art Kit.app" > smoke/spctl.txt 2>&1 || true  # unsigned: Gatekeeper rejects; a user clicks Open
+            printf '%s\n' 'import CoreGraphics' \
+              'for w in CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as! [[String: Any]] where w["kCGWindowLayer"] as? Int == 0 {' \
+              '  print(w["kCGWindowOwnerName"] ?? "") }' > /tmp/wins.swift
+            swiftc -o /tmp/wins /tmp/wins.swift
+            shot() { screencapture -x "smoke/$1.png"; }
+            win() { /tmp/wins | grep -qiE "$1"; }
+          fi
+          wait_win() { for _ in $(seq "$2"); do win "$1" && return 0; sleep 1; done; return 1; }
+          stop() { pkill -if "$1" || true; for _ in $(seq 20); do pgrep -if "$1" >/dev/null || return 0; sleep 1; done; }
+          up() {  # the app runs, and its local server answers with all three apps found
+            kill -0 "$pid" && [ -s smoke/url.txt ] && u=$(cat smoke/url.txt) && base=${u%%/ui/*} && tok=${u##*t=} &&
+              curl -fsS "$u" -o smoke/index.html && grep -q app.js smoke/index.html &&
+              curl -fsS "$base/api/desktop?t=$tok" -o smoke/desktop.json &&
+              python3 -c 'import json,sys; a=json.load(open(sys.argv[1]))["apps"]; print(a); sys.exit(not all(a.values()))' smoke/desktop.json
+          }
+
+          "$ART" > smoke/art-kit.log 2>&1 & pid=$!
+          if wait_win 'Art Kit' 60 && sleep 5 && up; then
+            shot art-kit
+            for i in 0 1 2; do  # the app row: /api/app, the same code and paths as the buttons
+              curl -fsS -G "$base/api/app" --data-urlencode "t=$tok" --data-urlencode "name=${names[i]}" >> smoke/apps.log
+              if wait_win "${names[i]}" 120; then sleep 5
+                [ "$RUNNER_OS" = Linux ] || { osascript -e "tell application \"${names[i]}\" to activate" || true; sleep 2; }  # in front of Art Kit
+                shot "${names[i]}"; else shot "${names[i]}-failed"
+                # Intel Mac VMs have no full Metal GPU: Blender 4.5 crashes in GPU_context_create (NULL storage buffer). Not an Art Kit bug.
+                if [ '${{ matrix.name }}' = mac-x64 ] && [ $i = 1 ]; then echo "::warning::Blender crashed in GPU_context_create: the Intel Mac VM has no full Metal GPU (see blender.crash.txt)"
+                else fail="$fail ${names[i]}"; fi
+              fi
+              stop "$A/${dirs[i]}"
+            done
+          else
+            fail="$fail Art-Kit"; shot art-kit-failed
+          fi
+          stop "$A/"
+
+          if [ "$RUNNER_OS" = macOS ]; then  # also the Finder way (open), not a fail
+            open --env ART_KIT_NO_DOWNLOAD=1 -a "$A/Art Kit.app" && wait_win 'Art Kit' 60 && sleep 5 && shot open-a ||
+              echo "::warning::open -a did not show Art Kit"
+            stop "$A/"
+          fi
+
+          "$ART" --selftest > smoke/selftest.txt 2>&1 || fail="$fail selftest"
+          cat smoke/selftest.txt
+          grep -q False smoke/selftest.txt && fail="$fail selftest-apps"
+          [ "$RUNNER_OS" = Linux ] || cp ~/Library/Logs/DiagnosticReports/* /tmp/blender.crash.txt "$TMPDIR/blender.crash.txt" smoke/ 2>/dev/null || true
+          [ -z "$fail" ] || { echo "::error::did not start:$fail"; exit 1; }
+
+      - name: Install, open, screenshot (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot($n) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("$PWD\smoke\$n.png")
+          }
+          function WaitWin($re, $sec) {
+            for ($i = 0; $i -lt $sec; $i++) { if (Get-Process | Where-Object { $_.MainWindowTitle -match $re }) { return $true }; Start-Sleep 1 }
+            return $false
+          }
+          $fail = @()
+          $setup = (Get-ChildItem dl\ArtKit-Setup-*.exe).FullName
+          $p = Start-Process $setup "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=`"$PWD\smoke\install.log`"" -Wait -PassThru
+          if ($p.ExitCode) { throw "installer exit code $($p.ExitCode)" }
+          $A = "$env:ProgramFiles\Art Kit"
+          foreach ($f in "$A\Art Kit.exe", "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Art Kit\Art Kit.lnk") {
+            if (-not (Test-Path $f)) { throw "not installed: $f" }
+          }
+          # The runner has no GPU, and Blender needs OpenGL 4.3: a software OpenGL (Mesa llvmpipe) next to blender.exe, for this test only
+          gh release download --repo pal1000/mesa-dist-win --pattern '*-release-msvc.7z' --dir mesa
+          7z x -omesa (Get-ChildItem mesa\*.7z).FullName | Out-Null
+          Copy-Item mesa\x64\opengl32.dll, mesa\x64\libgallium_wgl.dll "$A\Blender\"
+          $env:GALLIUM_DRIVER = 'llvmpipe'
+          $env:ART_KIT_URL_FILE = "$PWD\smoke\url.txt"
+          $ak = Start-Process "$A\Art Kit.exe" -PassThru -RedirectStandardOutput smoke\art-kit.log -RedirectStandardError smoke\art-kit.err
+          if ((WaitWin '^Art Kit' 60) -and -not $ak.HasExited -and (Test-Path smoke\url.txt)) {
+            Start-Sleep 5
+            $u = Get-Content smoke\url.txt; $base = $u -replace '/ui/.*'; $tok = $u -replace '.*t='
+            if (-not ((Invoke-WebRequest $u).Content -match 'app.js')) { throw 'the UI page has no app.js' }
+            $d = Invoke-RestMethod "$base/api/desktop?t=$tok"; $d | ConvertTo-Json -Depth 5 | Set-Content smoke\desktop.json
+            if ($d.apps.PSObject.Properties.Value -contains $false) { $fail += 'apps-found' }
+            Shot art-kit
+            foreach ($n in 'Krita', 'Blender', 'Sweet Home 3D') {  # the app row: /api/app, the same code and paths as the buttons
+              Invoke-RestMethod "$base/api/app?t=$tok&name=$([uri]::EscapeDataString($n))" | ConvertTo-Json | Add-Content smoke\apps.log
+              if (WaitWin $n 120) { Start-Sleep 5; if ($n -eq 'Blender') { Start-Sleep 25 }; Shot $n } else { $fail += $n; Shot "$n-failed" }  # Blender: software OpenGL draws slowly
+              Get-Process | Where-Object { $_.Path -like "$A\*" -and $_.Id -ne $ak.Id } | Stop-Process -Force
+            }
+          } else { $fail += 'Art-Kit'; Shot art-kit-failed }
+          Get-Process | Where-Object { $_.Path -like "$A\*" } | Stop-Process -Force
+          $s = Start-Process "$A\Art Kit.exe" -ArgumentList "--selftest" -Wait -PassThru -RedirectStandardOutput smoke\selftest.txt -RedirectStandardError smoke\selftest.err
+          Get-Content smoke\selftest.txt, smoke\selftest.err
+          if ($s.ExitCode -or (Select-String -Quiet False smoke\selftest.txt)) { $fail += 'selftest' }
+          if ($fail) { throw "did not start: $fail" }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-${{ matrix.name }}
+          path: smoke/

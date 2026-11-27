@@ -23,7 +23,7 @@ def launch(argv):
     if argv[0] == 'krita':
         d = os.path.join(GLib.get_user_runtime_dir(), 'art-kit')
         os.makedirs(d, exist_ok=True)
-        with open(os.path.join(d, 'request.tmp'), 'w') as f:
+        with open(os.path.join(d, 'request.tmp'), 'w', encoding='utf-8') as f:
             json.dump({'app': 'Krita', 'file': argv[1]}, f)
         os.replace(os.path.join(d, 'request.tmp'), os.path.join(d, 'request.json'))
         return

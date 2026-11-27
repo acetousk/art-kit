@@ -3,7 +3,7 @@
 handle(uri) -> (status, mime, bytes). Paths come from the root dir:
   ROOT/Library (read-only), ROOT/Art (kid's files), ROOT/.cache/library.
 """
-import datetime, hashlib, html, json, os, random, re, shutil, sqlite3, subprocess
+import datetime, hashlib, html, json, os, random, re, shutil, sqlite3, subprocess, threading
 from urllib.parse import urlsplit, parse_qs, unquote, quote
 
 APP = os.path.dirname(os.path.abspath(__file__))
@@ -18,6 +18,11 @@ try:
     from PIL import Image, ImageOps  # python3-pillow: small thumbnails save memory on 2 GB
 except ImportError:
     Image = None
+try:
+    import pypdfium2  # PDF first pages (From Family)
+except ImportError:
+    pypdfium2 = None
+PDFIUM = threading.Lock()  # PDFium is not thread-safe: desktop.py shares this lock with the book download
 
 
 def plain(md):
@@ -61,7 +66,7 @@ class Library:
         self.art = os.path.join(root, 'Art')
         self.cache = os.path.join(root, '.cache', 'library')
         self.launch = launch or (lambda argv: subprocess.Popen(argv))
-        with open(os.path.join(APP, 'books-map.json')) as f:
+        with open(os.path.join(APP, 'books-map.json'), encoding='utf-8') as f:
             self.books = json.load(f)
         self.deck = []
 
@@ -82,7 +87,7 @@ class Library:
 
     def done(self):
         try:
-            with open(os.path.join(self.art, '.library-log')) as f:
+            with open(os.path.join(self.art, '.library-log'), encoding='utf-8') as f:
                 return {l.rstrip('\n').split('\t', 1)[1] for l in f if '\t' in l}
         except FileNotFoundError:
             return set()
@@ -90,7 +95,7 @@ class Library:
     def credits(self):
         c = {}
         try:
-            with open(os.path.join(self.lib, 'Inspiration', 'CREDITS.txt')) as f:
+            with open(os.path.join(self.lib, 'Inspiration', 'CREDITS.txt'), encoding='utf-8') as f:
                 for l in f:
                     p = l.rstrip('\n').split('|')
                     if len(p) == 4 and not l.startswith('#'):
@@ -125,7 +130,12 @@ class Library:
             os.makedirs(os.path.dirname(t), exist_ok=True)
             if pdf:
                 tmp = t[:-4] + '-tmp'  # only a good page goes in the cache
-                if subprocess.run(['pdftoppm', '-f', '1', '-l', '1', '-scale-to', str(px), '-png', '-singlefile', src, tmp]).returncode:
+                try:  # the first page, px on the long side
+                    with PDFIUM:
+                        doc = pypdfium2.PdfDocument(src)
+                        doc[0].render(scale=px / max(doc[0].get_size())).to_pil().save(tmp + '.png', 'PNG')
+                        doc.close()
+                except Exception:
                     if os.path.exists(tmp + '.png'):
                         os.remove(tmp + '.png')
                     raise ValueError('cannot show this PDF')
@@ -169,7 +179,7 @@ class Library:
 
     def lesson(self, topic, dir):
         import markdown
-        text = open(os.path.join(self.inside(os.path.join('Tutorials', topic, dir)), 'README.md')).read()
+        text = open(os.path.join(self.inside(os.path.join('Tutorials', topic, dir)), 'README.md'), encoding='utf-8').read()
         pages, other, head, body = [], [], {}, []
         text, _, source = text.partition('\n---\nSource:')
         for line in text.splitlines():
@@ -201,7 +211,7 @@ class Library:
 
     def mark_done(self, topic, dir):
         os.makedirs(self.art, exist_ok=True)
-        with open(os.path.join(self.art, '.library-log'), 'a') as f:
+        with open(os.path.join(self.art, '.library-log'), 'a', encoding='utf-8') as f:
             f.write('%s\t%s/%s\n' % (datetime.datetime.now().isoformat(timespec='seconds'), topic, dir))
         return {'ok': True}
 
@@ -262,7 +272,7 @@ class Library:
             if ext in IMG:
                 out.append({'name': f, 'kind': 'image', 'url': self.url(p), 'thumb': self.thumb_url(p), 'rel': os.path.relpath(p, self.lib)})
             elif ext == '.txt':
-                out.append({'name': f, 'kind': 'text', 'text': open(p, errors='replace').read()})
+                out.append({'name': f, 'kind': 'text', 'text': open(p, errors='replace', encoding='utf-8').read()})
             elif ext == '.pdf':  # the first page, made when the picture shows
                 out.append({'name': f, 'kind': 'image', 'url': self.thumb_url(p) + '?big=1', 'thumb': self.thumb_url(p)})
         return out
@@ -273,7 +283,7 @@ class Library:
         p = os.path.join(d, datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S') + '.txt')
         while os.path.exists(p):  # two notes in one second: two files
             p = p[:-4] + '-1.txt'
-        with open(p, 'x') as f:
+        with open(p, 'x', encoding='utf-8') as f:
             f.write(text.rstrip() + '\n')
         self.draft('')  # saved: the draft is empty again
         return {'ok': True, 'file': os.path.basename(p)}
@@ -282,9 +292,9 @@ class Library:
         """The note she has not saved yet. It stays when she leaves Notes or the app closes."""
         p = os.path.join(self.art, 'Notes', '.draft')
         if text is None:
-            return {'text': open(p, errors='replace').read() if os.path.exists(p) else ''}
+            return {'text': open(p, errors='replace', encoding='utf-8').read() if os.path.exists(p) else ''}
         os.makedirs(os.path.dirname(p), exist_ok=True)
-        with open(p + '.tmp', 'w') as f:  # a failed write keeps the last draft
+        with open(p + '.tmp', 'w', encoding='utf-8') as f:  # a failed write keeps the last draft
             f.write(text)
         os.replace(p + '.tmp', p)
         return {'ok': True}
@@ -299,7 +309,7 @@ class Library:
                     when = datetime.datetime.strptime(f[:15], '%Y-%m-%d-%H%M').strftime('%a %d %b %Y, %H:%M')
                 except ValueError:
                     when = f[:-4]
-                out.append({'when': when, 'file': f, 'text': open(os.path.join(d, f), errors='replace').read()})
+                out.append({'when': when, 'file': f, 'text': open(os.path.join(d, f), errors='replace', encoding='utf-8').read()})
         return out
 
     def delete_note(self, f):
