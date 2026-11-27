@@ -1,0 +1,21 @@
+What if your kid's computer could only do art?
+It turns on straight into Krita. Pick up the pen and draw.
+Every drawing saves to their own Art folder.
+When they get stuck, the Library is one tap away.
+Inside are three hundred lessons, from first lines to full rooms.
+Here is a harder one: a room in two-point perspective.
+Each lesson says what they will make, how long it takes, and what to do first.
+The steps come from real art books, with the original page beside them.
+When they finish, Done marks the lesson.
+Out of ideas? Inspire deals out paintings from museum collections.
+They keep the ones they love.
+Any picture opens in Krita, to copy and learn from.
+Search finds every lesson on a subject, like cats.
+Notes is for ideas, lists, and messages home.
+Sweet Home 3D lets them design a room, wall by wall.
+Blender adds drawing in 3D.
+Switch back, and the drawing is right where they left it.
+And you? You see every file they make, in your own backup folder.
+There is no internet, no web browser, and only one app at a time.
+So it runs well on an old laptop with two gigabytes of memory.
+art-kit is free and open source. Get it on GitHub.

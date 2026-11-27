@@ -14,7 +14,7 @@ Use Tailscale SSH from your computer for remote checks: `ssh $ADMIN@$HOST`.
 | **Dock gone** | Restart the device once. | If still gone, tell the setup adult. |
 | **No Wi-Fi** | `nmcli device status`. The Wi-Fi line should say `connected`. | `sudo nmcli device wifi connect "<SSID>" password "<password>"` |
 | **Backup ✗** (no new files in Backup) | Check Wi-Fi. Check the newest date in the Tresorit app. | Fix Wi-Fi first. Then tell the setup adult. See [5-backup-and-share.md](5-backup-and-share.md) to configure `kiosk/60-backup.sh`. |
-| **Library empty** | `ls /home/$KID/Library` | Check Wi-Fi with `ping -c 2 fedoraproject.org`. Run `sudo bash library/build-library.sh` again. Read the errors first. |
+| **Library empty** | `ls /var/lib/art-kit/Library` | Check Wi-Fi with `ping -c 2 fedoraproject.org`. Run `sudo bash library/build-library.sh` again. Read the errors first. |
 | **Disk full** | `df -h /` | Do not delete art yet. Ask the setup adult first. A delete can sync to the backup. |
 | **Forgot passwords** | `$ADMIN` has no password login. Use Tailscale SSH. | Root: run `sudo passwd root` as `$ADMIN`. Forgot the GRUB password or the device is locked: reinstall with [2-install-fedora.md](2-install-fedora.md), then restore from the backup. |
 | **Kid found a way out** | Ask what they did. Run `sudo nft list ruleset`. | Do not blame the kid. Tell the setup adult. Re-run the tests in [3-run-the-kit.md](3-run-the-kit.md), section 6. |

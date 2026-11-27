@@ -23,7 +23,7 @@ def launch(argv):
     if argv[0] == 'krita':
         d = os.path.join(GLib.get_user_runtime_dir(), 'art-kit')
         os.makedirs(d, exist_ok=True)
-        with open(os.path.join(d, 'request.tmp'), 'w') as f:
+        with open(os.path.join(d, 'request.tmp'), 'w', encoding='utf-8') as f:
             json.dump({'app': 'Krita', 'file': argv[1]}, f)
         os.replace(os.path.join(d, 'request.tmp'), os.path.join(d, 'request.json'))
         return
@@ -61,12 +61,17 @@ def on_activate(app, lib):
     if app.get_active_window():  # dock tapped again: show the open window
         app.get_active_window().present()
         return
+    # 2 GB laptops: small caches, and the web process frees memory early (about 500 MB at most).
+    mem = WebKit.MemoryPressureSettings.new()
+    mem.set_memory_limit(500)
+    WebKit.NetworkSession.set_memory_pressure_settings(mem)  # before the session is made (WebKit API)
     session = WebKit.NetworkSession.new_ephemeral()
     session.connect('download-started', lambda s, d: d.cancel())
     # A dead proxy: if something slips past the checks, it still cannot reach a network.
     session.set_proxy_settings(WebKit.NetworkProxyMode.CUSTOM,
                                WebKit.NetworkProxySettings.new('http://127.0.0.1:9', None))
-    ctx = WebKit.WebContext.new()
+    ctx = WebKit.WebContext(memory_pressure_settings=mem)
+    ctx.set_cache_model(WebKit.CacheModel.DOCUMENT_VIEWER)
     ctx.register_uri_scheme('library', on_request, lib)
     sec = ctx.get_security_manager()
     sec.register_uri_scheme_as_secure('library')
