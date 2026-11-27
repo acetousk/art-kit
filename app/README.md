@@ -16,6 +16,7 @@ loads, dev tools, the right-click menu, downloads, and new windows.
 | `make-books-map.py` | Makes `books-map.json` from `../library/books.txt` and `../lessons`. Prints unresolved sources |
 | `make-index.py` | Makes the search index `~/Library/index.sqlite` (SQLite FTS5) |
 | `library.desktop` | Launcher for the dock |
+| `desktop.py`, `VERSION` | The desktop app (Windows, Mac, Linux): this UI in a pywebview window. Not used on the kiosk. See `../release/README.md` |
 
 ## What it reads and writes
 
@@ -31,7 +32,7 @@ loads, dev tools, the right-click menu, downloads, and new windows.
 
 ## Install (as admin)
 
-1. Install the packages: `sudo dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown poppler-utils`
+1. Install the packages: `sudo dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown python3-pillow python3-pip && sudo python3 -m pip install pypdfium2`
 2. Copy the app: `sudo mkdir -p /opt/art-kit && sudo cp -r app /opt/art-kit/`
 3. Install the launcher: `sudo cp /opt/art-kit/app/library.desktop /usr/share/applications/`
 4. After each library update, build the search index: `sudo python3 /opt/art-kit/app/make-index.py --root /var/lib/art-kit`

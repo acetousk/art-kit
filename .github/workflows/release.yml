@@ -1,0 +1,106 @@
+# Desktop downloads (Windows, Mac Apple Silicon, Mac Intel, Linux) on a v* tag, or by hand (a draft release).
+# Each job: get the pinned apps and check their SHA-256 (release/apps.toml), build Art Kit, smoke test, pack.
+# Then one job uploads the files, the app sources (GPL), and SHA256SUMS to the GitHub Release.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-15, macos-15-intel, ubuntu-24.04]  # GitHub retired macos-13 (x64) and macos-14 (arm64)
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Tag matches app/VERSION
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: test "v$(cat app/VERSION)" = "$GITHUB_REF_NAME"
+      - name: Python packages
+        run: python -m pip install -r release/requirements.txt
+      - name: Inno Setup
+        if: runner.os == 'Windows'
+        run: choco install innosetup -y --no-progress
+      - name: Get the apps and check their SHA-256
+        run: python release/build.py fetch
+      - name: Build Art Kit
+        run: python release/build.py app
+      - name: Smoke test (Linux, headless)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -yq libegl1 libgl1 libxkbcommon0  # on every Linux desktop; not on the bare runner
+          build/pyi/artkit/artkit --selftest
+      - name: Smoke test (Mac, headless)
+        if: runner.os == 'macOS'
+        run: '"build/pyi/Art Kit.app/Contents/MacOS/Art Kit" --selftest'
+      - name: Smoke test (Windows, headless)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath 'build\pyi\Art Kit\Art Kit.exe' -ArgumentList '--selftest' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "selftest failed: $($p.ExitCode)" }
+      - name: Pack
+        run: python release/build.py pack
+      - name: Smoke test the AppImage
+        if: runner.os == 'Linux'
+        run: APPIMAGE_EXTRACT_AND_RUN=1 build/ArtKit-*-x86_64/ArtKit.AppImage --selftest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: art-kit-${{ matrix.os }}
+          path: dist/ArtKit-*
+          compression-level: 0
+
+  sources:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Get the app sources (GPL) and check their SHA-256
+        run: python release/build.py sources
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sources
+          path: dist/sources/*
+          compression-level: 0
+
+  release:
+    needs: [build, sources]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: SHA256SUMS
+        working-directory: out
+        run: cp ../THIRD-PARTY.md . && sha256sum -- * > ../SHA256SUMS && mv ../SHA256SUMS . && cat SHA256SUMS
+      - name: Upload to the GitHub Release (by hand = a draft; the tag push publishes it)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v$(cat app/VERSION)"
+          if [ "$(gh release view "$tag" --json isDraft -q .isDraft 2>/dev/null)" = false ]; then
+            echo "$tag is published already: change app/VERSION"; exit 1
+          fi
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Art Kit $tag" \
+            --notes "Downloads: Windows installer, Mac (Apple Silicon and Intel), Linux. App sources (GPL): see THIRD-PARTY.md."
+          gh release upload "$tag" out/* --clobber
+          if [ "$GITHUB_REF_TYPE" = tag ]; then gh release edit "$tag" --draft=false; fi
+
+  smoke:
+    needs: release
+    uses: ./.github/workflows/release-smoke.yml

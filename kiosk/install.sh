@@ -171,13 +171,14 @@ systemctl enable dnf5-automatic.timer
 # 11. T3 Code for the admin user (never as root).
 su - "$ADMIN" -c 'curl -fsSL https://t3.codes/install.sh | sh'
 
-# 12. Library (read-only for the kid) and the Library app. build-library.sh lists the sources and makes the search index.
-dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown python3-pillow poppler-utils urw-base35-fonts unzip wget xdotool xprop wmctrl
+# 12. Library (read-only for the kid) and the Library app. build_library.py lists the sources and makes the search index.
+dnf install -y python3-gobject gtk4 webkitgtk6.0 python3-markdown python3-pillow python3-pip urw-base35-fonts xdotool xprop wmctrl
+python3 -m pip install --root-user-action=ignore 'pypdfium2==5.15.2'   # PDF pages and text (not in Fedora); into /usr/local
 # The Library is outside the kid home (root never writes there). ~/Library is a link to it. An old ~/Library folder goes.
 mkdir -p /var/lib/art-kit && chmod 755 /var/lib/art-kit
 [ -L /home/$KID/Library ] || rm -rf /home/$KID/Library
 ln -sfn /var/lib/art-kit/Library /home/$KID/Library
-bash "$(dirname "$0")/../library/build-library.sh" || echo "WARNING: build-library.sh failed. Run it again (it resumes)."
+python3 "$(dirname "$0")/../library/build_library.py" || echo "WARNING: build_library.py failed. Run it again (it resumes)."
 rm -rf /opt/art-kit/app && mkdir -p /opt/art-kit && cp -r "$(dirname "$0")/../app" /opt/art-kit/app
 
 # 13. Offline 3D apps. Keep network and file access limited for the kid.

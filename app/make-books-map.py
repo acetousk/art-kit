@@ -17,14 +17,14 @@ def words(s):
     return {w for w in re.findall(r'[a-z0-9]+', s.lower()) if w not in STOP}
 
 books = {}
-for line in open(books_txt):
+for line in open(books_txt, encoding='utf-8'):
     if line.strip() and not line.startswith('#'):
         p = line.split('|')
         books[p[1]] = words(p[1]) | words(p[5])  # name + credit (author, title, year)
 
 out, bad = {}, []
 for readme in sorted(glob.glob(os.path.join(lessons, '*', '*', 'README.md'))):
-    for line in open(readme):
+    for line in open(readme, encoding='utf-8'):
         if line.startswith('**Read:**'):
             for src, pages in parse_read(line):
                 if not pages or src in out:
@@ -36,6 +36,6 @@ for readme in sorted(glob.glob(os.path.join(lessons, '*', '*', 'README.md'))):
                     bad.append(src)
                     print('UNRESOLVED: %s  (%s)' % (src, os.path.relpath(readme, lessons)))
 
-json.dump(dict(sorted(out.items())), open(os.path.join(here, 'books-map.json'), 'w'), indent=1)
+json.dump(dict(sorted(out.items())), open(os.path.join(here, 'books-map.json'), 'w', encoding='utf-8'), indent=1)
 print('%d sources mapped, %d unresolved' % (len(out), len(bad)))
 sys.exit(1 if bad else 0)
